@@ -170,4 +170,5 @@ export default {
   'brain.close.aria': 'Close brain details',
   'footer.version': 'Version {version}',
   'footer.x': 'X: {handle}',
+  'footer.tg': 'Telegram: {link}',
 };

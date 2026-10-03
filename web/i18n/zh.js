@@ -171,4 +171,5 @@ export default {
   'brain.close.aria': '关闭大脑说明',
   'footer.version': '版本 {version}',
   'footer.x': 'X：{handle}',
+  'footer.tg': '电报群：{link}',
 };
