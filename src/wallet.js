@@ -30,6 +30,28 @@ export function readMemo(seed, round) {
   return '0x' + [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+// 赛后验证用公共 RPC 读交易，不需要钱包，任何人都能验证。
+export async function readTransaction(hash, { fetchImpl, rpcs = XLAYER.rpcUrls.concat('https://xlayerrpc.okx.com') } = {}) {
+  const doFetch = fetchImpl ?? ((...args) => globalThis.fetch(...args));
+  let lastError;
+  for (const rpc of rpcs) {
+    try {
+      const call = async (method) => {
+        const res = await doFetch(rpc, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params: [hash] }) });
+        const json = await res.json();
+        if (json.error) throw new Error(json.error.message ?? JSON.stringify(json.error));
+        return json.result;
+      };
+      const [tx, receipt] = [await call('eth_getTransactionByHash'), await call('eth_getTransactionReceipt')];
+      if (!tx) throw new Error('链上查不到这笔交易');
+      return { from: tx.from, to: tx.to, data: tx.input, blockNumber: receipt ? parseInt(receipt.blockNumber, 16) : null, success: receipt?.status === '0x1' };
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw new Error(`读取链上交易失败：${lastError?.message ?? lastError}`);
+}
+
 export function friendlyWalletError(err) {
   if (err?.code === 4001) return '你在钱包里取消了这笔交易';
   if (err?.code === -32002) return '钱包里已经有一个待处理的请求，请先在钱包里处理';
@@ -80,6 +102,26 @@ export function createWallet({ provider, getProvider = () => provider, sleep = (
     throw new Error(`读心交易还没确认，请稍后重试（不会重复付款）：${hash}`);
   }
 
+  // 开局承诺：玩家钱包发给自己一笔 0 OKB 的交易，data 里是承诺哈希。只花 Gas。
+  // 同一个承诺只发一次：确认超时后重试会继续等原来那笔交易。
+  async function commitMatch({ data, onStatus = () => {} }) {
+    let hash = paid.get(data);
+    if (!hash) {
+      if (!account) {
+        onStatus('连接钱包');
+        await connect();
+      }
+      onStatus('切换到 X Layer');
+      await ensureXLayer();
+      onStatus('请在钱包中确认开局承诺交易（0 OKB，只花 Gas）');
+      hash = await request('eth_sendTransaction', [{ from: account, to: account, value: '0x0', data }]);
+      paid.set(data, hash);
+    }
+    onStatus('等待开局承诺在 X Layer 上确认', hash);
+    await waitForReceipt(hash);
+    return hash;
+  }
+
   // 为某局某轮的读心付费，返回交易哈希。onStatus 用来更新界面提示。
   async function payForRead({ seed, round, onStatus = () => {} }) {
     const key = `${seed}:${round}`;
@@ -112,5 +154,6 @@ export function createWallet({ provider, getProvider = () => provider, sleep = (
     connect,
     ensureXLayer,
     payForRead,
+    commitMatch,
   };
 }

@@ -30,6 +30,7 @@
           <label><input type="radio" name="evaluator" value="chain" checked /> X Layer 链上电路</label>
           <label><input type="radio" name="evaluator" value="local" /> 本地模拟（离线）</label>
         </fieldset>
+        <label class="pay-pick"><input id="opt-commit" type="checkbox" checked /> <span>开局把本局规则（干扰计划、真实纪元、对手大脑）的哈希承诺写上 X Layer（0 OKB，只花 Gas）</span></label>
         <label class="pay-pick"><input id="opt-pay" type="checkbox" checked /> <span>读心时用钱包在 X Layer 上烧 0.0001 OKB 到 <code id="burn-addr"></code></span></label>
         <span id="wallet-status" class="hint-inline"></span>
       </div>
@@ -62,6 +63,14 @@
         <tbody id="reveal-body"></tbody>
       </table>
       <p class="seed">本局 seed：<code id="seed"></code>（同一个 seed 可重放出同一份干扰计划）</p>
+      <div id="commit-box" class="commit-box" hidden>
+        <h3>开局承诺</h3>
+        <p>开局交易：<a id="commit-tx" target="_blank" rel="noopener noreferrer"></a></p>
+        <p>链上承诺哈希：<code id="commit-hash"></code></p>
+        <p>赛后公开的原文：<code id="commit-preimage" class="preimage"></code></p>
+        <button id="btn-verify-commit" type="button">链上验证</button>
+        <p id="commit-verdict" aria-live="polite"></p>
+      </div>
       <button id="btn-again" type="button" class="primary">再来一局</button>
     </section>
 
@@ -116,6 +125,8 @@
           <tr><td>未知纪元</td><td>10</td><td>随机</td><td>可以</td><td>从恒纪元、乱纪元里随机抽一个，赛后公开</td></tr>
         </tbody>
       </table>
+
+      <p>开局可以勾选“把本局规则的哈希承诺写上 X Layer”：开打前用钱包发一笔 0 OKB 的交易，把干扰计划、真实纪元和对手大脑的哈希写上链。赛后公开原文，点结果页的“链上验证”就能确认本局规则在开局前已定好、对局中没被改过。</p>
 
       <h3>5. 智子干扰</h3>
       <p>每轮每一方都有一定概率（由纪元决定的干扰率）被智子操控，大脑临时换成 #4 清理者，打出一次并非本意的打击。干扰对双方是对称的，你和对方每轮各自独立抽签。</p>

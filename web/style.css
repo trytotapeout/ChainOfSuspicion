@@ -67,6 +67,10 @@ h2 { font-size: 20px; margin: 28px 0 12px; }
 .pay-pick { display: flex; align-items: center; gap: 6px; flex-basis: 100%; }
 .hint-inline { flex-basis: 100%; }
 .options .pay-pick input { width: auto; margin: 0; }
+.commit-box { margin: 16px 0; padding: 4px 16px 12px; border-radius: 8px; background: var(--glass); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-edge); }
+.commit-box h3 { font-size: 16px; margin: 12px 0 4px; color: var(--accent); }
+.commit-box p { margin: 6px 0; font-size: 13px; color: #c9ced8; word-break: break-all; }
+.commit-box code { font-size: 12px; }
 .pay-pick code { font-size: 12px; word-break: break-all; color: var(--accent); }
 .hint-inline { color: var(--muted); font-size: 13px; align-self: center; }
 .evaluator-pick { border: none; padding: 0; margin: 0; display: flex; gap: 14px; align-items: center; }

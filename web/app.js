@@ -4,7 +4,8 @@ import { pickCircuit, createReadPolicy } from '../src/ai.js';
 import { randomSeed } from '../src/rng.js';
 import { ERAS, resolveEra, eraConfig } from '../src/eras.js';
 import { createStarfield } from './starfield.js';
-import { createWallet, detectProvider, friendlyWalletError, txUrl, READ_FEE_LABEL, BURN_ADDRESS } from '../src/wallet.js';
+import { createWallet, detectProvider, friendlyWalletError, txUrl, READ_FEE_LABEL, BURN_ADDRESS, readTransaction } from '../src/wallet.js';
+import { randomSalt, computeCommitment, commitCalldata, commitmentPreimage, parseCommitCalldata, verifyMatch } from '../src/commit.js';
 import { localEvaluator } from '../src/evaluators/local.js';
 import { createTapeoutEvaluator } from '../src/evaluators/tapeout.js';
 
@@ -31,6 +32,9 @@ let seed;
 const wallet = createWallet({ getProvider: () => detectProvider(window) });
 let payToRead = false;
 let readTxs = {}; // round → 读心交易哈希
+// 开局承诺：本局秘密（含 salt）和上链交易，赛后公开并可链上验证
+let commitSecret = null;
+let commitTx = null;
 
 function renderCircuits() {
   // 说明按钮和选择按钮是兄弟元素（按钮不能嵌套按钮），用绝对定位放在卡片右上角。
@@ -229,10 +233,43 @@ function setActions(buttons) {
 
 $('btn-start').addEventListener('click', () => {
   era = resolveEra(selectedEra);
-  const config = eraConfig(era.era);
-  const rounds = config.rounds;
   seed = randomSeed();
   aiCircuit = pickCircuit();
+  commitTx = null;
+  const config = eraConfig(era.era);
+  commitSecret = { seed, salt: randomSalt(), eraId: era.era.id, aiCircuit, rounds: config.rounds, interferenceRate: config.interferenceRate };
+  if ($('opt-commit').checked) commitThenStart();
+  else startMatch();
+});
+
+// 开局前先把承诺写上链，确认后再开打。失败时可以重试，也可以不上链直接开始。
+async function commitThenStart() {
+  show('game');
+  $('log-body').innerHTML = '';
+  $('era-name').textContent = '';
+  setActions([]);
+  try {
+    commitTx = await wallet.commitMatch({
+      data: commitCalldata(computeCommitment(commitSecret)),
+      onStatus: (msg, hash) => {
+        $('prompt').innerHTML = `${msg}…${hash ? `<br><a href="${txUrl(hash)}" target="_blank" rel="noopener noreferrer">在 OKLink 查看交易</a>` : ''}`;
+        updateWalletStatus();
+      },
+    });
+    startMatch();
+  } catch (err) {
+    updateWalletStatus();
+    $('prompt').innerHTML = `<span class="attack">开局承诺没有完成：${friendlyWalletError(err)}</span>`;
+    setActions([
+      { label: '重试上链', cls: 'primary', onClick: commitThenStart },
+      { label: '不上链，直接开始', onClick: startMatch },
+    ]);
+  }
+}
+
+function startMatch() {
+  const config = eraConfig(era.era);
+  const rounds = config.rounds;
   aiPolicy = createReadPolicy();
   evaluator = EVALUATORS[document.querySelector('input[name="evaluator"]:checked')?.value ?? 'chain']();
   payToRead = $('opt-pay').checked;
@@ -251,7 +288,7 @@ $('btn-start').addEventListener('click', () => {
   $('log-body').innerHTML = '';
   show('game');
   nextRound();
-});
+}
 
 function updateEvaluatorStatus() {
   const calls = typeof evaluator?.calls === 'number' ? ` · 本局链上调用 ${evaluator.calls} 次` : '';
@@ -389,9 +426,43 @@ function showResult() {
     .map((r, i) => `<tr><td>${r.round}</td><td>${plan[i].A ? '<span class="hit">是</span>' : '否'}</td><td>${plan[i].B ? '<span class="hit">是</span>' : '否'}</td><td>${actionText(r.finalAction.A)} : ${actionText(r.finalAction.B)}</td></tr>`)
     .join('');
   $('seed').textContent = seed;
+  renderCommitBox();
   show('result');
   $('btn-again').focus();
 }
+
+function renderCommitBox() {
+  $('commit-box').hidden = !commitTx;
+  if (!commitTx) return;
+  $('commit-tx').href = txUrl(commitTx);
+  $('commit-tx').textContent = commitTx;
+  $('commit-hash').textContent = computeCommitment(commitSecret);
+  $('commit-preimage').textContent = commitmentPreimage(commitSecret);
+  $('commit-verdict').textContent = '';
+  $('btn-verify-commit').disabled = false;
+}
+
+// 赛后验证：用公共 RPC 读回开局交易，比对哈希，并用 seed 重放干扰计划。不需要钱包。
+$('btn-verify-commit').addEventListener('click', async () => {
+  const btn = $('btn-verify-commit');
+  btn.disabled = true;
+  $('commit-verdict').textContent = '正在读取链上交易…';
+  try {
+    const tx = await readTransaction(commitTx);
+    const onChain = parseCommitCalldata(tx.data);
+    const r = verifyMatch({ onChainCommitment: onChain, secret: commitSecret, playedPlan: match.reveal().plan });
+    const checks = [
+      `${tx.success ? '✓' : '✗'} 交易已在 X Layer 第 ${tx.blockNumber} 个区块确认`,
+      `${r.commitmentOk ? '✓' : '✗'} 链上承诺与公开原文的 keccak256 哈希一致`,
+      `${r.planOk ? '✓' : '✗'} 用公开的 seed 重放出的干扰计划与本局完全一致`,
+    ];
+    $('commit-verdict').innerHTML = `${checks.join('<br>')}<br><strong class="${r.ok && tx.success ? 'coop' : 'attack'}">${r.ok && tx.success ? '验证通过：本局规则在开局前已上链，对局中没有被改过。' : '验证未通过。'}</strong>`;
+  } catch (err) {
+    $('commit-verdict').innerHTML = `<span class="attack">${err.message}</span>`;
+  } finally {
+    btn.disabled = false;
+  }
+});
 
 $('btn-again').addEventListener('click', () => show('setup'));
 

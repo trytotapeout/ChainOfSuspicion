@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createWallet, readMemo, BURN_ADDRESS, friendlyWalletError } from '../src/wallet.js';
+import { createWallet, readMemo, BURN_ADDRESS, friendlyWalletError, readTransaction } from '../src/wallet.js';
 
 // 模拟 EIP-1193 钱包，记录收到的请求。
 function mockProvider({ chainId = '0xc4', missingChain = false, receipts = [{ status: '0x1' }] } = {}) {
@@ -74,4 +74,23 @@ test('交易链上执行失败时报错，不执行读心', async () => {
 test('没有钱包、用户取消时给出可读的提示', async () => {
   await assert.rejects(() => createWallet({ provider: null }).payForRead({ seed: 1, round: 1 }), /没有检测到钱包/);
   assert.equal(friendlyWalletError({ code: 4001 }), '你在钱包里取消了这笔交易');
+});
+
+test('开局承诺：发给自己的 0 OKB 交易，data 为承诺；重试不重复发送', async () => {
+  const provider = mockProvider();
+  const wallet = createWallet({ provider, ...fast });
+  const hash = await wallet.commitMatch({ data: '0xc0ffee' });
+  assert.equal(hash, '0xhash1');
+  assert.deepEqual(provider.lastTx, { from: '0xabc', to: '0xabc', value: '0x0', data: '0xc0ffee' });
+  await wallet.commitMatch({ data: '0xc0ffee' });
+  assert.equal(provider.calls.filter((m) => m === 'eth_sendTransaction').length, 1);
+});
+
+test('readTransaction 用公共 RPC 读回交易 data 和确认状态', async () => {
+  const fetchImpl = async (url, { body }) => {
+    const { method } = JSON.parse(body);
+    const result = method === 'eth_getTransactionByHash' ? { from: '0xabc', to: '0xabc', input: '0xc0ffee' } : { status: '0x1', blockNumber: '0x10' };
+    return { json: async () => ({ result }) };
+  };
+  assert.deepEqual(await readTransaction('0xh', { fetchImpl, rpcs: ['x'] }), { from: '0xabc', to: '0xabc', data: '0xc0ffee', blockNumber: 16, success: true });
 });
