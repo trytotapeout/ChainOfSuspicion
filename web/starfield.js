@@ -14,9 +14,8 @@ const SUN_CORE = 0.11;
 const SUN_GLOW = 0.75;
 const PLANET_SIZE = 0.05;
 const size = (r, scale, min) => Math.max(min, r * scale);
-const MODE_LABEL = { stable: '恒纪元', chaotic: '乱纪元', triple: '三日凌空', flying: '飞星纪元' };
 
-export function createStarfield(canvas, caption) {
+export function createStarfield(canvas) {
   const ctx = canvas.getContext('2d');
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   let sim = createSimulation('stable');
@@ -27,7 +26,6 @@ export function createStarfield(canvas, caption) {
   let h = 0;
   let last = 0;
   let raf = 0;
-  let label = null; // 覆盖显示的纪元名，比如对局中的“未知纪元”
 
   function resize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -52,10 +50,6 @@ export function createStarfield(canvas, caption) {
   // 星系画在视口正中，位于居中的内容区背后，透过磨砂玻璃卡片能看到它。
   function view() {
     return { cx: w / 2, cy: h * 0.5, scale: (Math.min(w, h) / 2 / VIEW_RADIUS) * 1.1 };
-  }
-
-  function updateCaption() {
-    if (caption) caption.textContent = `三体运动实时引力模拟 · ${label ?? MODE_LABEL[sim.mode]} · 三体星球文明已毁灭 ${sim.destroyed} 次`;
   }
 
   function draw(now) {
@@ -145,10 +139,7 @@ export function createStarfield(canvas, caption) {
     const events = sim.advance(dt * SPEED[sim.mode]);
     if (events.includes('suns-escaped')) resetTrails();
     if (events.includes('planet-destroyed')) trails[3] = [];
-    if (events.some((e) => e !== 'triple-reset')) {
-      flash = 1;
-      updateCaption();
-    }
+    if (events.some((e) => e !== 'triple-reset')) flash = 1;
     flash = Math.max(0, flash - dt * 1.5);
     [...sim.suns, sim.planet].forEach((b, i) => {
       const trail = trails[i];
@@ -169,17 +160,12 @@ export function createStarfield(canvas, caption) {
     raf = requestAnimationFrame(frame);
   }
 
-  function setMode(mode, nextLabel = null) {
-    label = nextLabel;
-    if (mode === sim.mode) {
-      updateCaption();
-      return;
-    }
+  function setMode(mode) {
+    if (mode === sim.mode) return;
     const destroyed = sim.destroyed;
     sim = createSimulation(mode);
     sim.destroyed = destroyed;
     resetTrails();
-    updateCaption();
     draw(performance.now());
   }
 
@@ -187,7 +173,6 @@ export function createStarfield(canvas, caption) {
   reduceMotion.addEventListener('change', start);
   resetTrails();
   resize();
-  updateCaption();
   start();
 
   return { setMode, get mode() { return sim.mode; }, get destroyed() { return sim.destroyed; } };

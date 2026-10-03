@@ -16,7 +16,8 @@ const $ = (id) => document.getElementById(id);
 const actionText = (a) => (a === ATTACK ? '<span class="attack">打击</span>' : '<span class="coop">交流</span>');
 
 // 背景：三体星系实时引力模拟，跟随纪元切换。未知纪元在对局中统一画乱纪元，不泄露真实纪元。
-const starfield = createStarfield($('starfield'), $('starfield-caption'));
+const starfield = createStarfield($('starfield'));
+let destroyedAtStart = 0; // 开局时背景里三体文明累计毁灭次数，结算时算出本局毁灭了几次
 const ERA_SKY = { stable: 'stable', chaotic: 'chaotic', triple: 'triple', flying: 'flying', unknown: 'chaotic' };
 
 let selected = 1;
@@ -189,7 +190,7 @@ $('era-list').addEventListener('click', (e) => {
   if (!btn) return;
   selectedEra = btn.dataset.era;
   renderEras();
-  starfield.setMode(ERA_SKY[selectedEra], selectedEra === 'unknown' ? '未知纪元' : null);
+  starfield.setMode(ERA_SKY[selectedEra]);
 });
 
 $('circuit-list').addEventListener('click', (e) => {
@@ -243,7 +244,8 @@ $('btn-start').addEventListener('click', () => {
   $('round-total').textContent = rounds;
   $('round-no').textContent = '1';
   $('era-name').textContent = era.hidden ? '未知纪元' : era.era.name;
-  starfield.setMode(era.hidden ? 'chaotic' : era.era.id, era.hidden ? '未知纪元' : null);
+  starfield.setMode(era.hidden ? 'chaotic' : era.era.id);
+  destroyedAtStart = starfield.destroyed;
   $('my-score').textContent = '0';
   $('ai-score').textContent = '0';
   $('log-body').innerHTML = '';
@@ -374,6 +376,12 @@ function showResult() {
   const { A, B } = match.totals;
   const verdict = A > B ? '你的文明存活了下来。' : A < B ? '你的文明被压制了。' : '两个文明势均力敌。';
   const ai = getCircuit(aiCircuit);
+  // 结局：对比分数说明地球任务成败，再说这场对局里三体星球文明毁灭了几次。
+  const destroyed = starfield.destroyed - destroyedAtStart;
+  const fate = A > B ? '你凯旋而归，地球文明在三体星球站稳了脚跟。' : A < B ? '拯救地球失败：殖民舰队被压制，地球人没能等到你的捷报。' : '势均力敌：殖民计划陷入僵局，地球还在等待。';
+  const sky = destroyed > 0 ? `这场相遇中，三体星球在三颗太阳的引力下毁灭了 ${destroyed} 次。` : '这场相遇中，三体星球文明安然无恙。';
+  $('result-fate').className = A < B ? 'fate lost' : 'fate';
+  $('result-fate').innerHTML = `${fate}<small>${sky}</small>`;
   if (era.hidden) starfield.setMode(era.era.id);
   const eraLine = era.hidden ? `本局其实是 <strong>${era.era.name}</strong>（干扰率 ${Math.round(era.era.interferenceRate * 100)}%）。<br>` : '';
   $('result-summary').innerHTML = `最终比分 ${A} : ${B}。${verdict}<br>${eraLine}对方出战的大脑是 <strong>#${ai.id} ${ai.name}</strong>（${ai.gate}）：${ai.desc}。`;
