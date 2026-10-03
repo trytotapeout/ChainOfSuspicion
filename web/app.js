@@ -3,7 +3,7 @@ import { createMatch, ATTACK } from '../src/engine.js';
 import { pickCircuit, createReadPolicy } from '../src/ai.js';
 import { randomSeed } from '../src/rng.js';
 import { ERAS, resolveEra, eraConfig } from '../src/eras.js';
-import { createWallet, detectProvider, friendlyWalletError, txUrl, READ_FEE_LABEL } from '../src/wallet.js';
+import { createWallet, detectProvider, friendlyWalletError, txUrl, READ_FEE_LABEL, BURN_ADDRESS } from '../src/wallet.js';
 import { localEvaluator } from '../src/evaluators/local.js';
 import { createTapeoutEvaluator } from '../src/evaluators/tapeout.js';
 
@@ -328,6 +328,7 @@ const brainDialog = setupDialog($('brain-info'));
 renderEras();
 updateEvaluatorStatus();
 // 没检测到钱包时默认不勾选，玩家仍可以不付费试玩；钱包晚注入时刷新一下状态。
+$('burn-addr').textContent = BURN_ADDRESS;
 if (!wallet.available) $('opt-pay').checked = false;
 updateWalletStatus();
 window.addEventListener('load', updateWalletStatus);

@@ -29,7 +29,7 @@
           <label><input type="radio" name="evaluator" value="chain" checked /> X Layer 链上电路</label>
           <label><input type="radio" name="evaluator" value="local" /> 本地模拟（离线）</label>
         </fieldset>
-        <label class="pay-pick"><input id="opt-pay" type="checkbox" checked /> 读心时用钱包在 X Layer 上烧 0.0001 OKB</label>
+        <label class="pay-pick"><input id="opt-pay" type="checkbox" checked /> <span>读心时用钱包在 X Layer 上烧 0.0001 OKB 到 <code id="burn-addr"></code></span></label>
         <span id="wallet-status" class="hint-inline"></span>
       </div>
       <button id="btn-start" type="button" class="primary">立刻出战</button>
