@@ -28,6 +28,8 @@ export const DEFAULT_CONFIG = {
   rounds: 10,
   interferenceRate: 0.2,
   readCost: 1,
+  // 三日凌空纪元关闭读心。
+  allowRead: true,
   firstInput: COOPERATE,
   payoff: DEFAULT_PAYOFF,
 };
@@ -103,6 +105,7 @@ export function createMatch({ circuits, evaluator, seed, plan: fixedPlan, config
 
     for (const reader of SIDES) {
       if (!reads[reader]) continue;
+      if (!cfg.allowRead) throw new Error('本纪元不能读心');
       const target = other(reader);
       // 智子只会把动作改成打击，所以只有看到打击时读心才有意义。
       if (observed[target] !== ATTACK) throw new Error(`第 ${round} 轮 ${target} 没有打击，不能读心`);

@@ -21,9 +21,9 @@
     <section id="setup" aria-labelledby="setup-title">
       <h2 id="setup-title">选择出战大脑</h2>
       <div id="circuit-list" class="circuits" role="radiogroup" aria-label="出战电路"></div>
+      <h2 id="era-title">选择纪元</h2>
+      <div id="era-list" class="circuits eras" role="radiogroup" aria-labelledby="era-title"></div>
       <div class="options">
-        <label>轮数 <input id="opt-rounds" type="number" min="3" max="30" value="10" /></label>
-        <label>智子干扰率 <input id="opt-rate" type="number" min="0" max="0.9" step="0.05" value="0.2" /></label>
         <fieldset class="evaluator-pick">
           <legend>电路计算</legend>
           <label><input type="radio" name="evaluator" value="chain" checked /> X Layer 链上电路</label>
@@ -35,7 +35,7 @@
     </section>
 
     <section id="game" hidden aria-labelledby="game-title">
-      <h2 id="game-title">第 <span id="round-no">1</span> / <span id="round-total">10</span> 轮</h2>
+      <h2 id="game-title"><span id="era-name" class="era-tag"></span> 第 <span id="round-no">1</span> / <span id="round-total">10</span> 轮</h2>
       <div class="scoreboard">
         <div><span class="label">我方（<span id="my-circuit"></span>）</span><span id="my-score" class="score">0</span></div>
         <div><span class="label">对方（未知）</span><span id="ai-score" class="score">0</span></div>
@@ -100,14 +100,26 @@
       </table>
       <p>单看一轮，打击总能多拿分；可如果大家都打击，所有人都只剩 1 分。这就是黑暗森林。</p>
 
-      <h3>4. 智子干扰</h3>
-      <p>每轮每一方都有一定概率（开局时设定的干扰率）被智子操控，大脑临时换成 #4 清理者，打出一次并非本意的打击。干扰对双方是对称的，你和对方每轮各自独立抽签。</p>
+      <h3>4. 纪元</h3>
+      <p>开局时选择纪元，它决定这一局的轮数、智子干扰率，以及能不能读心。</p>
+      <table class="log">
+        <thead><tr><th scope="col">纪元</th><th scope="col">轮数</th><th scope="col">干扰率</th><th scope="col">读心</th><th scope="col">打法</th></tr></thead>
+        <tbody>
+          <tr><td>恒纪元</td><td>10</td><td>5%</td><td>可以</td><td>打击多半是真心的，读心常常白花钱</td></tr>
+          <tr><td>乱纪元</td><td>10</td><td>40%</td><td>可以</td><td>打击多半是误会，值得读心</td></tr>
+          <tr><td>三日凌空</td><td>6</td><td>30%</td><td>禁止</td><td>误会无法澄清，全靠大脑本身</td></tr>
+          <tr><td>未知纪元</td><td>10</td><td>随机</td><td>可以</td><td>从恒纪元、乱纪元里随机抽一个，赛后公开</td></tr>
+        </tbody>
+      </table>
+
+      <h3>5. 智子干扰</h3>
+      <p>每轮每一方都有一定概率（由纪元决定的干扰率）被智子操控，大脑临时换成 #4 清理者，打出一次并非本意的打击。干扰对双方是对称的，你和对方每轮各自独立抽签。</p>
       <ul>
         <li>你自己被干扰时，界面会当场提示你：你知道自己的电路，本来就能推断出来。你没法替自己辩解，只能等对方读心还你清白。</li>
         <li>对方有没有被干扰，你看不到，赛后才公开。</li>
       </ul>
 
-      <h3>5. 读心</h3>
+      <h3>6. 读心</h3>
       <p>被打击时，你可以花 1 分读心：系统用对方原本的大脑重新计算这一轮。</p>
       <ul>
         <li>算出来是交流，说明是智子干扰：对方这一轮改回交流，按真实动作计分，读心费退还。</li>
@@ -115,7 +127,7 @@
       </ul>
       <p>对方的大脑在对局中保密，所以你要猜：这次打击是智子干的，还是遇到了清理者？</p>
 
-      <h3>6. 例子</h3>
+      <h3>7. 例子</h3>
       <p>以下例子都打 6 轮。例 A、B：双方都选 #1 执剑人，第 3 轮对方被智子干扰。</p>
 
       <h4>例 A：你选择忍下，猜疑链开始</h4>

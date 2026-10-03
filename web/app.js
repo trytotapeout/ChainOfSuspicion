@@ -2,6 +2,7 @@ import { CIRCUITS, getCircuit, TAPEOUT } from '../src/circuits.js';
 import { createMatch, ATTACK } from '../src/engine.js';
 import { pickCircuit, createReadPolicy } from '../src/ai.js';
 import { randomSeed } from '../src/rng.js';
+import { ERAS, resolveEra, eraConfig } from '../src/eras.js';
 import { localEvaluator } from '../src/evaluators/local.js';
 import { createTapeoutEvaluator } from '../src/evaluators/tapeout.js';
 
@@ -13,6 +14,8 @@ const $ = (id) => document.getElementById(id);
 const actionText = (a) => (a === ATTACK ? '<span class="attack">打击</span>' : '<span class="coop">交流</span>');
 
 let selected = 1;
+let selectedEra = 'stable';
+let era; // { era, hidden }：本局实际纪元，hidden 表示玩家选的是未知纪元
 let match;
 let aiCircuit;
 let aiPolicy;
@@ -28,6 +31,25 @@ function renderCircuits() {
     </button>`,
   ).join('');
 }
+
+const eraMeta = (e) => (e.hidden ? '纪元：随机 · 赛后公开' : `${e.rounds} 轮 · 干扰率 ${Math.round(e.interferenceRate * 100)}% · ${e.allowRead ? '可读心' : '禁止读心'}`);
+
+function renderEras() {
+  $('era-list').innerHTML = ERAS.map(
+    (e) => `<button type="button" class="circuit" role="radio" data-era="${e.id}" aria-checked="${e.id === selectedEra}">
+      <div class="name">${e.name}</div>
+      <div class="meta chain">${eraMeta(e)}</div>
+      <div class="desc">${e.desc}</div>
+    </button>`,
+  ).join('');
+}
+
+$('era-list').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-era]');
+  if (!btn) return;
+  selectedEra = btn.dataset.era;
+  renderEras();
+});
 
 $('circuit-list').addEventListener('click', (e) => {
   const btn = e.target.closest('.circuit');
@@ -55,18 +77,20 @@ function setActions(buttons) {
 }
 
 $('btn-start').addEventListener('click', () => {
-  const rounds = Math.min(30, Math.max(3, Number($('opt-rounds').value) || 10));
-  const interferenceRate = Math.min(0.9, Math.max(0, Number($('opt-rate').value) || 0));
+  era = resolveEra(selectedEra);
+  const config = eraConfig(era.era);
+  const rounds = config.rounds;
   seed = randomSeed();
   aiCircuit = pickCircuit();
   aiPolicy = createReadPolicy();
   evaluator = EVALUATORS[document.querySelector('input[name="evaluator"]:checked')?.value ?? 'chain']();
   updateEvaluatorStatus();
   // 玩家是 A，电脑是 B
-  match = createMatch({ circuits: { A: selected, B: aiCircuit }, evaluator, seed, config: { rounds, interferenceRate } });
+  match = createMatch({ circuits: { A: selected, B: aiCircuit }, evaluator, seed, config });
   $('my-circuit').textContent = `#${selected} ${getCircuit(selected).name}`;
   $('round-total').textContent = rounds;
   $('round-no').textContent = '1';
+  $('era-name').textContent = era.hidden ? '未知纪元' : era.era.name;
   $('my-score').textContent = '0';
   $('ai-score').textContent = '0';
   $('log-body').innerHTML = '';
@@ -101,7 +125,8 @@ function nextRound() {
 
 function renderRound({ round, observed, self }) {
   $('round-no').textContent = round;
-  const aiReads = aiPolicy.shouldRead(observed.A);
+  const canRead = match.config.allowRead;
+  const aiReads = canRead && aiPolicy.shouldRead(observed.A);
   let base = `本轮你的大脑输出：${actionText(observed.A)}，对方：${actionText(observed.B)}。`;
   // 只看自己的 self.A，对方是否被干扰要到赛后才公开。
   if (self.A.interfered) {
@@ -111,7 +136,10 @@ function renderRound({ round, observed, self }) {
         : `<br><span class="hit">你的大脑被智子操控了！</span>你本想${actionText(self.A.intended)}，却打出了一次打击。对方会不会读心发现你是被冤枉的？`;
   }
 
-  if (observed.B === ATTACK) {
+  if (observed.B === ATTACK && !canRead) {
+    $('prompt').innerHTML = `${base}<br>你被打击了。三日凌空，读心失效，只能忍下。`;
+    setActions([{ label: '忍下', cls: 'primary', onClick: () => resolve({ A: false, B: false }) }]);
+  } else if (observed.B === ATTACK) {
     $('prompt').innerHTML = `${base}<br>你被打击了。是智子干扰，还是对方本性如此？读心需要 1 分（若是干扰则退还）。`;
     setActions([
       { label: '读心（1 分）', cls: 'primary', onClick: () => resolve({ A: true, B: aiReads }) },
@@ -157,7 +185,8 @@ function showResult() {
   const { A, B } = match.totals;
   const verdict = A > B ? '你的文明存活了下来。' : A < B ? '你的文明被压制了。' : '两个文明势均力敌。';
   const ai = getCircuit(aiCircuit);
-  $('result-summary').innerHTML = `最终比分 ${A} : ${B}。${verdict}<br>对方出战的大脑是 <strong>#${ai.id} ${ai.name}</strong>（${ai.gate}）：${ai.desc}。`;
+  const eraLine = era.hidden ? `本局其实是 <strong>${era.era.name}</strong>（干扰率 ${Math.round(era.era.interferenceRate * 100)}%）。<br>` : '';
+  $('result-summary').innerHTML = `最终比分 ${A} : ${B}。${verdict}<br>${eraLine}对方出战的大脑是 <strong>#${ai.id} ${ai.name}</strong>（${ai.gate}）：${ai.desc}。`;
   $('reveal-body').innerHTML = history
     .map((r, i) => `<tr><td>${r.round}</td><td>${plan[i].A ? '<span class="hit">是</span>' : '否'}</td><td>${plan[i].B ? '<span class="hit">是</span>' : '否'}</td><td>${actionText(r.finalAction.A)} : ${actionText(r.finalAction.B)}</td></tr>`)
     .join('');
@@ -179,6 +208,7 @@ rules.addEventListener('click', (e) => {
   if (e.target === rules && outside) rules.close();
 });
 
+renderEras();
 updateEvaluatorStatus();
 $('contract-addr').textContent = TAPEOUT.circuits;
 $('contract-link').href = TAPEOUT.explorer;
