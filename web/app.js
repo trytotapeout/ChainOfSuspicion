@@ -3,6 +3,7 @@ import { createMatch, ATTACK } from '../src/engine.js';
 import { pickCircuit, createReadPolicy } from '../src/ai.js';
 import { randomSeed } from '../src/rng.js';
 import { ERAS, resolveEra, eraConfig } from '../src/eras.js';
+import { createStarfield } from './starfield.js';
 import { createWallet, detectProvider, friendlyWalletError, txUrl, READ_FEE_LABEL, BURN_ADDRESS } from '../src/wallet.js';
 import { localEvaluator } from '../src/evaluators/local.js';
 import { createTapeoutEvaluator } from '../src/evaluators/tapeout.js';
@@ -13,6 +14,10 @@ let evaluator;
 
 const $ = (id) => document.getElementById(id);
 const actionText = (a) => (a === ATTACK ? '<span class="attack">打击</span>' : '<span class="coop">交流</span>');
+
+// 背景：三体星系实时引力模拟，跟随纪元切换。未知纪元在对局中统一画乱纪元，不泄露真实纪元。
+const starfield = createStarfield($('starfield'), $('starfield-caption'), document.querySelector('main'));
+const ERA_SKY = { stable: 'stable', chaotic: 'chaotic', triple: 'triple', unknown: 'chaotic' };
 
 let selected = 1;
 let selectedEra = 'stable';
@@ -117,6 +122,7 @@ $('era-list').addEventListener('click', (e) => {
   if (!btn) return;
   selectedEra = btn.dataset.era;
   renderEras();
+  starfield.setMode(ERA_SKY[selectedEra], selectedEra === 'unknown' ? '未知纪元' : null);
 });
 
 $('circuit-list').addEventListener('click', (e) => {
@@ -166,6 +172,7 @@ $('btn-start').addEventListener('click', () => {
   $('round-total').textContent = rounds;
   $('round-no').textContent = '1';
   $('era-name').textContent = era.hidden ? '未知纪元' : era.era.name;
+  starfield.setMode(era.hidden ? 'chaotic' : era.era.id, era.hidden ? '未知纪元' : null);
   $('my-score').textContent = '0';
   $('ai-score').textContent = '0';
   $('log-body').innerHTML = '';
@@ -296,6 +303,7 @@ function showResult() {
   const { A, B } = match.totals;
   const verdict = A > B ? '你的文明存活了下来。' : A < B ? '你的文明被压制了。' : '两个文明势均力敌。';
   const ai = getCircuit(aiCircuit);
+  if (era.hidden) starfield.setMode(era.era.id);
   const eraLine = era.hidden ? `本局其实是 <strong>${era.era.name}</strong>（干扰率 ${Math.round(era.era.interferenceRate * 100)}%）。<br>` : '';
   $('result-summary').innerHTML = `最终比分 ${A} : ${B}。${verdict}<br>${eraLine}对方出战的大脑是 <strong>#${ai.id} ${ai.name}</strong>（${ai.gate}）：${ai.desc}。`;
   $('reveal-body').innerHTML = history
