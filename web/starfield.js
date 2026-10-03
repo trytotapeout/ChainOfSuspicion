@@ -12,7 +12,7 @@ const VIEW_RADIUS = 3.2; // 画面要容纳的模拟坐标半径
 // 星体大小随画面缩放（单位：模拟坐标），并设下限，小窗口里也看得清。
 const SUN_CORE = 0.11;
 const SUN_GLOW = 0.75;
-const PLANET_SIZE = 0.05;
+const PLANET_SIZE = 0.1;
 const size = (r, scale, min) => Math.max(min, r * scale);
 
 export function createStarfield(canvas) {
@@ -67,7 +67,7 @@ export function createStarfield(canvas) {
       const color = i < 3 ? SUN_COLORS[i] : PLANET_COLOR;
       for (let k = 1; k < trail.length; k++) {
         ctx.strokeStyle = `rgba(${color}, ${(k / trail.length) * (i < 3 ? 0.35 : 0.5)})`;
-        ctx.lineWidth = i < 3 ? 2.5 : 1.5;
+        ctx.lineWidth = i < 3 ? 2.5 : 2;
         ctx.beginPath();
         ctx.moveTo(cx + trail[k - 1].x * scale, cy + trail[k - 1].y * scale);
         ctx.lineTo(cx + trail[k].x * scale, cy + trail[k].y * scale);
@@ -109,7 +109,7 @@ export function createStarfield(canvas) {
     const p = sim.planet;
     const px = cx + p.x * scale;
     const py = cy + p.y * scale;
-    const pr = size(PLANET_SIZE, scale, 5);
+    const pr = size(PLANET_SIZE, scale, 10);
     const atmo = ctx.createRadialGradient(px, py, pr, px, py, pr * 2.6);
     atmo.addColorStop(0, `rgba(${PLANET_COLOR}, 0.35)`);
     atmo.addColorStop(1, `rgba(${PLANET_COLOR}, 0)`);
