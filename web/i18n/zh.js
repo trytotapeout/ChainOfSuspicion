@@ -40,7 +40,7 @@ export default {
   'card.mint.aria': '{name} 的铸造交易（OKLink）',
   'custom.name': '#5 设计你的大脑',
   'custom.meta': '参考 3 位输入电路逻辑',
-  'custom.desc': '看得更远、记得更多的三体大脑。点击查看设计方法。',
+  'custom.desc': '设计思维更复杂的大脑，点击查看设计方法。',
   'era.meta.hidden': '纪元：随机 · 赛后公开',
   'era.meta': '{rounds} 轮 · 干扰率 {rate}% · {read}',
   'era.read.yes': '可读心',
@@ -170,6 +170,6 @@ export default {
   'rules.close.aria': '关闭规则',
   'brain.close.aria': '关闭大脑说明',
   'footer.version': '版本 {version}',
-  'footer.x': 'X：{handle}',
-  'footer.tg': '电报群：{link}',
+  'footer.x': 'X：',
+  'footer.tg': '电报群：',
 };

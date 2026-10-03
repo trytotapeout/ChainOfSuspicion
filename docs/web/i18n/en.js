@@ -39,7 +39,7 @@ export default {
   'card.mint.aria': 'Mint transaction of {name} (OKLink)',
   'custom.name': '#5 Design your brain',
   'custom.meta': 'Based on 3-input circuit logic',
-  'custom.desc': 'A Trisolaran brain that sees further and remembers more. Click for the design guide.',
+  'custom.desc': 'Design a brain that thinks in more complex ways. Click for the design guide.',
   'era.meta.hidden': 'Era: random · revealed after',
   'era.meta': '{rounds} rounds · {rate}% interference · {read}',
   'era.read.yes': 'mind-reading on',
@@ -169,6 +169,6 @@ export default {
   'rules.close.aria': 'Close rules',
   'brain.close.aria': 'Close brain details',
   'footer.version': 'Version {version}',
-  'footer.x': 'X: {handle}',
-  'footer.tg': 'Telegram: {link}',
+  'footer.x': 'X: ',
+  'footer.tg': 'Telegram: ',
 };

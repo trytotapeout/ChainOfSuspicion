@@ -21,8 +21,8 @@ const EVALUATORS = { chain: () => createTapeoutEvaluator(), local: () => localEv
 let evaluator;
 let evaluatorKind = 'chain';
 
-const X_HANDLE = 'x.com/boostbob';
-const TELEGRAM = 'https://t.me/+BI5wArStnKBmZTJl';
+const X_URL = 'https://x.com/boostbob';
+const TELEGRAM_URL = 'https://t.me/+BI5wArStnKBmZTJl';
 const $ = (id) => document.getElementById(id);
 const actionWord = (a) => t(a === ATTACK ? 'action.attack' : 'action.coop');
 const actionText = (a) => `<span class="${a === ATTACK ? 'attack' : 'coop'}">${actionWord(a)}</span>`;
@@ -577,8 +577,10 @@ brainDialog.addEventListener('close', () => {
 
 function renderFooter() {
   $('footer-version').textContent = t('footer.version', { version: VERSION });
-  $('footer-x').textContent = t('footer.x', { handle: X_HANDLE });
-  $('footer-tg').textContent = t('footer.tg', { link: TELEGRAM });
+  // 标签文字跟语言走，链接文字显示网址本身
+  const link = (url, text) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+  $('footer-x').innerHTML = t('footer.x') + link(X_URL, 'x.com/boostbob');
+  $('footer-tg').innerHTML = t('footer.tg') + link(TELEGRAM_URL, TELEGRAM_URL.replace('https://', ''));
 }
 
 // 中英文切换：静态文案由 i18n.js 套用，动态内容在这里重画。
