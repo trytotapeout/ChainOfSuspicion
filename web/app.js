@@ -3,6 +3,7 @@ import { createMatch, ATTACK } from '../src/engine.js';
 import { pickCircuit, createReadPolicy } from '../src/ai.js';
 import { randomSeed } from '../src/rng.js';
 import { ERAS, resolveEra, eraConfig } from '../src/eras.js';
+import { createWallet, detectProvider, friendlyWalletError, txUrl, READ_FEE_LABEL } from '../src/wallet.js';
 import { localEvaluator } from '../src/evaluators/local.js';
 import { createTapeoutEvaluator } from '../src/evaluators/tapeout.js';
 
@@ -20,6 +21,10 @@ let match;
 let aiCircuit;
 let aiPolicy;
 let seed;
+// 读心付费：开局勾选后，每次读心先在 X Layer 上烧 0.0001 OKB，交易确认后才读心。
+const wallet = createWallet({ getProvider: () => detectProvider(window) });
+let payToRead = false;
+let readTxs = {}; // round → 读心交易哈希
 
 function renderCircuits() {
   // 说明按钮和选择按钮是兄弟元素（按钮不能嵌套按钮），用绝对定位放在卡片右上角。
@@ -152,6 +157,8 @@ $('btn-start').addEventListener('click', () => {
   aiCircuit = pickCircuit();
   aiPolicy = createReadPolicy();
   evaluator = EVALUATORS[document.querySelector('input[name="evaluator"]:checked')?.value ?? 'chain']();
+  payToRead = $('opt-pay').checked;
+  readTxs = {};
   updateEvaluatorStatus();
   // 玩家是 A，电脑是 B
   match = createMatch({ circuits: { A: selected, B: aiCircuit }, evaluator, seed, config });
@@ -208,15 +215,50 @@ function renderRound({ round, observed, self }) {
     $('prompt').innerHTML = `${base}<br>你被打击了。三日凌空，读心失效，只能忍下。`;
     setActions([{ label: '忍下', cls: 'primary', onClick: () => resolve({ A: false, B: false }) }]);
   } else if (observed.B === ATTACK) {
-    $('prompt').innerHTML = `${base}<br>你被打击了。是智子干扰，还是对方本性如此？读心需要 1 分（若是干扰则退还）。`;
+    const fee = payToRead ? `，并用钱包在 X Layer 上烧掉 ${READ_FEE_LABEL}（不退还）` : '';
+    $('prompt').innerHTML = `${base}<br>你被打击了。是智子干扰，还是对方本性如此？读心需要 1 分（若是干扰则退还）${fee}。`;
     setActions([
-      { label: '读心（1 分）', cls: 'primary', onClick: () => resolve({ A: true, B: aiReads }) },
+      { label: payToRead ? `读心（1 分 + ${READ_FEE_LABEL}）` : '读心（1 分）', cls: 'primary', onClick: () => readMind(round, aiReads) },
       { label: '忍下', onClick: () => resolve({ A: false, B: aiReads }) },
     ]);
   } else {
     $('prompt').innerHTML = base;
     setActions([{ label: '结算本轮', cls: 'primary', onClick: () => resolve({ A: false, B: aiReads }) }]);
   }
+}
+
+// 玩家读心：需要付费时，先在钱包里签名一笔交易并等它确认，再在链上 eval 读心。
+// 付款失败或取消时留在本轮，可以重试，也可以改为忍下。
+async function readMind(round, aiReads) {
+  if (payToRead && !readTxs[round]) {
+    setActions([]);
+    try {
+      readTxs[round] = await wallet.payForRead({
+        seed,
+        round,
+        onStatus: (msg, hash) => {
+          $('prompt').innerHTML = `${msg}…${hash ? `<br><a href="${txUrl(hash)}" target="_blank" rel="noopener noreferrer">在 OKLink 查看交易</a>` : ''}`;
+          updateWalletStatus();
+        },
+      });
+    } catch (err) {
+      updateWalletStatus();
+      $('prompt').innerHTML = `<span class="attack">读心付费没有完成：${friendlyWalletError(err)}</span>`;
+      setActions([
+        { label: '重试读心', cls: 'primary', onClick: () => readMind(round, aiReads) },
+        { label: '忍下', onClick: () => resolve({ A: false, B: aiReads }) },
+      ]);
+      return;
+    }
+  }
+  return resolve({ A: true, B: aiReads });
+}
+
+function updateWalletStatus() {
+  const el = $('wallet-status');
+  if (!wallet.available) el.textContent = '未检测到钱包插件，可以先不付费试玩';
+  else if (wallet.account) el.textContent = `已连接 ${wallet.account.slice(0, 6)}…${wallet.account.slice(-4)}`;
+  else el.textContent = '第一次读心时连接钱包';
 }
 
 function resolve(reads) {
@@ -233,7 +275,8 @@ function renderResolve(r) {
   if (r.readResult.B === 'interference') notes.push('对方读了你的心，发现你被智子干扰，你本轮改回真实动作');
   if (r.readResult.B === 'genuine') notes.push('对方读了你的心，确认你是真心打击');
 
-  const readCell = [r.readResult.A && `我→${r.readResult.A === 'interference' ? '识破干扰' : '真打击'}`, r.readResult.B && `对方→${r.readResult.B === 'interference' ? '识破干扰' : '真打击'}`]
+  const tx = readTxs[r.round] ? ` <a href="${txUrl(readTxs[r.round])}" target="_blank" rel="noopener noreferrer" title="读心交易">交易</a>` : '';
+  const readCell = [r.readResult.A && `我→${r.readResult.A === 'interference' ? '识破干扰' : '真打击'}${tx}`, r.readResult.B && `对方→${r.readResult.B === 'interference' ? '识破干扰' : '真打击'}`]
     .filter(Boolean)
     .join('<br>') || '—';
   $('log-body').insertAdjacentHTML(
@@ -284,6 +327,10 @@ const brainDialog = setupDialog($('brain-info'));
 
 renderEras();
 updateEvaluatorStatus();
+// 没检测到钱包时默认不勾选，玩家仍可以不付费试玩；钱包晚注入时刷新一下状态。
+if (!wallet.available) $('opt-pay').checked = false;
+updateWalletStatus();
+window.addEventListener('load', updateWalletStatus);
 $('contract-addr').textContent = TAPEOUT.circuits;
 $('contract-link').href = TAPEOUT.explorer;
 renderCircuits();

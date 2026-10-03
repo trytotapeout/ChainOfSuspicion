@@ -29,6 +29,8 @@
           <label><input type="radio" name="evaluator" value="chain" checked /> X Layer 链上电路</label>
           <label><input type="radio" name="evaluator" value="local" /> 本地模拟（离线）</label>
         </fieldset>
+        <label class="pay-pick"><input id="opt-pay" type="checkbox" checked /> 读心时用钱包在 X Layer 上烧 0.0001 OKB</label>
+        <span id="wallet-status" class="hint-inline"></span>
       </div>
       <button id="btn-start" type="button" class="primary">立刻出战</button>
       <p class="hint">第一次玩？点右上角的“帮助 / 规则”。</p>
@@ -121,6 +123,7 @@
 
       <h3>6. 读心</h3>
       <p>被打击时，你可以花 1 分读心：系统用对方原本的大脑重新计算这一轮。</p>
+      <p>开局勾选“读心时用钱包烧 OKB”后，每次读心还要用钱包在 X Layer 上发一笔交易，把 0.0001 OKB 打进黑洞地址 <code>0x…dEaD</code>。这笔 OKB 无论读心结果如何都不退还，交易确认后才会读心，对局记录里可以点开每一笔读心交易。它代表“透明”的真实代价：将来正式版里，双方开局押 OKB，赢家拿走奖池，读心费就是博弈成本的一部分。</p>
       <ul>
         <li>算出来是交流，说明是智子干扰：对方这一轮改回交流，按真实动作计分，读心费退还。</li>
         <li>算出来还是打击，说明对方本性如此：扣你 1 分，比分不变。</li>
