@@ -1,4 +1,4 @@
-import { CIRCUITS, getCircuit, TAPEOUT } from '../src/circuits.js';
+import { CIRCUITS, getCircuit, TAPEOUT, mintTxUrl } from '../src/circuits.js';
 import { createMatch, ATTACK } from '../src/engine.js';
 import { pickCircuit, createReadPolicy } from '../src/ai.js';
 import { randomSeed } from '../src/rng.js';
@@ -42,6 +42,7 @@ function renderCircuits() {
         <div class="desc">${c.desc}</div>
       </button>
       <button type="button" class="btn-info" data-info="${c.id}" aria-haspopup="dialog" aria-label="#${c.id} ${c.name} 的输入输出说明">!</button>
+      ${c.mintTx ? `<a class="mint-link" href="${mintTxUrl(c.mintTx)}" target="_blank" rel="noopener noreferrer" aria-label="#${c.id} ${c.name} 的铸造交易（OKLink）">铸造交易 ↗</a>` : ''}
     </div>`,
   ).join('');
 }
@@ -80,7 +81,7 @@ async function openBrainInfo(id) {
     </table>
     <h3>电路接法</h3>
     <p>${c.wiring}</p>
-    ${c.nftId ? `<p class="chain-line">链上：NFT #${c.nftId} · TapeID ${c.tapeoutId}<br>合约 <a href="${TAPEOUT.explorer}" target="_blank" rel="noopener noreferrer"><code>${TAPEOUT.circuits}</code></a></p>
+    ${c.nftId ? `<p class="chain-line">链上：NFT #${c.nftId} · TapeID ${c.tapeoutId}<br>合约 <a href="${TAPEOUT.explorer}" target="_blank" rel="noopener noreferrer"><code>${TAPEOUT.circuits}</code></a>${c.mintTx ? `<br>铸造交易 <a href="${mintTxUrl(c.mintTx)}" target="_blank" rel="noopener noreferrer"><code>${c.mintTx}</code></a>` : ''}</p>
     <button type="button" id="btn-brain-verify">在链上核对真值表</button>` : ''}`;
   $('btn-brain-verify')?.addEventListener('click', () => verifyBrainOnChain(id));
   brainDialog.showModal();

@@ -14,12 +14,12 @@
 
 ### 四个大脑
 
-| 大脑 | 电路 | 对方交流时 | 对方打击时 | TapeID |
-|---|---|---|---|---|
-| #1 执剑人 | 传递 | 交流 | 打击 | 1.2.271 |
-| #2 逆行者 | 取反 | 打击 | 交流 | 2.2.271 |
-| #3 拯救派 | 恒 1 | 交流 | 交流 | 3.2.271 |
-| #4 清理者 | 恒 0 | 打击 | 打击 | 4.2.271 |
+| 大脑 | 电路 | 对方交流时 | 对方打击时 | TapeID | 铸造交易 |
+|---|---|---|---|---|---|
+| #1 执剑人 | 传递 | 交流 | 打击 | 1.2.271 | [0x18a70855…](https://www.oklink.com/zh-hans/x-layer/evm/tx/0x18a70855fa03cdb0373e0cf25e8e4b1bd94541bbae0dd7ac5ab5435a51e62423) |
+| #2 逆行者 | 取反 | 打击 | 交流 | 2.2.271 | [0x7c6ec250…](https://www.oklink.com/zh-hans/x-layer/evm/tx/0x7c6ec250b7bbb37000c548ca147247fcf0262fa77de448c927e505cbc3bd25c3) |
+| #3 拯救派 | 恒 1 | 交流 | 交流 | 3.2.271 | [0x036e8cf6…](https://www.oklink.com/zh-hans/x-layer/evm/tx/0x036e8cf69e81ff5ef3a5399939e8fd62d748cb270c01f05aad7e8902b158c2f2) |
+| #4 清理者 | 恒 0 | 打击 | 打击 | 4.2.271 | [0xae48453a…](https://www.oklink.com/zh-hans/x-layer/evm/tx/0xae48453a32e898279c041c2bc8f591240791979afddcce004ab9d1506608a04b) |
 
 ### 计分
 
