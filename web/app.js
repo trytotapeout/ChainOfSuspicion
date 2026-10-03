@@ -11,6 +11,10 @@ import { localEvaluator, evaluateLocal } from '../src/evaluators/local.js';
 import { createTapeoutEvaluator } from '../src/evaluators/tapeout.js';
 import { t, getLang, setLang, onLangChange, applyStatic, circuitText, eraText } from './i18n.js';
 import { designGuideHtml } from './i18n/guide.js';
+import { brainSvg, startThinking } from './brainviz.js';
+import { eraSkyHtml } from './eraviz.js';
+
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
 // 默认用 X Layer 链上的真实电路计算；断网或 RPC 不可用时可以切到本地模拟。
 const EVALUATORS = { chain: () => createTapeoutEvaluator(), local: () => localEvaluator };
@@ -73,8 +77,10 @@ function renderCircuits() {
     CIRCUITS.map((base) => {
       const c = circuitText(base.id);
       const label = brainLabel(c.id);
-      return `<div class="circuit-card">
+      const gates = c.netlist.length;
+      return `<div class="circuit-card brain-${c.id}">
       <button type="button" class="circuit" role="radio" data-id="${c.id}" aria-checked="${c.id === selected}">
+        ${brainSvg(c, { aria: t('viz.brain.aria', { name: label, gates }), gates: t('viz.gates', { gates }) })}
         <div class="name">${label}</div>
         <div class="meta">${t('card.gate', { gate: c.gate })}</div>
         ${c.nftId ? `<div class="meta chain">NFT #${c.nftId} · TapeID ${c.tapeoutId}</div>` : ''}
@@ -92,6 +98,33 @@ function renderCircuits() {
         <div class="desc">${t('custom.desc')}</div>
       </button>
     </div>`;
+  // 卡片重画后旧的 SVG 已经不在了，重新挂动画
+  stopAllThinking();
+  syncThinking();
+}
+
+// 大脑思考动画：选中的大脑一直在思考，鼠标悬停或键盘聚焦的大脑也会思考。
+const thinking = new Map(); // id → 停止函数
+function syncThinking() {
+  const want = new Set([selected]);
+  const hovered = document.querySelector('#circuit-list .circuit:hover, #circuit-list .circuit:focus-visible');
+  if (hovered?.dataset.id) want.add(Number(hovered.dataset.id));
+  for (const [id, stop] of thinking) {
+    if (!want.has(id)) {
+      stop();
+      thinking.delete(id);
+    }
+  }
+  for (const id of want) {
+    if (thinking.has(id)) continue;
+    const svg = document.querySelector(`#circuit-list .circuit[data-id="${id}"] .brainviz`);
+    if (svg) thinking.set(id, startThinking(svg, getCircuit(id), reduceMotion.matches));
+  }
+}
+
+function stopAllThinking() {
+  for (const stop of thinking.values()) stop();
+  thinking.clear();
 }
 
 function renderDesignGuide() {
@@ -166,7 +199,8 @@ const eraMeta = (e) =>
 function renderEras() {
   $('era-list').innerHTML = ERAS.map((base) => {
     const e = eraText(base.id);
-    return `<button type="button" class="circuit" role="radio" data-era="${e.id}" aria-checked="${e.id === selectedEra}">
+    return `<button type="button" class="circuit era-card era-${e.id}" role="radio" data-era="${e.id}" aria-checked="${e.id === selectedEra}">
+      ${eraSkyHtml(e.id, { temp: t('viz.temp'), light: t('viz.light'), lightValue: t(`viz.light.${e.id}`) })}
       <div class="name">${e.name}</div>
       <div class="meta chain">${eraMeta(e)}</div>
       <div class="desc">${e.desc}</div>
@@ -200,6 +234,14 @@ $('circuit-list').addEventListener('click', (e) => {
   if (!btn) return;
   selected = Number(btn.dataset.id);
   renderCircuits();
+});
+
+for (const type of ['mouseover', 'mouseout', 'focusin', 'focusout']) {
+  $('circuit-list').addEventListener(type, () => requestAnimationFrame(syncThinking));
+}
+reduceMotion.addEventListener('change', () => {
+  stopAllThinking();
+  syncThinking();
 });
 
 $('brain-body').addEventListener('click', (e) => {

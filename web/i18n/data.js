@@ -1,10 +1,10 @@
 // 大脑和纪元的英文文案。中文以 src/circuits.js、src/eras.js 为准，这里只补英文。
 
 export const CIRCUITS_EN = {
-  1: { name: 'Swordholder', gate: 'pass-through', desc: 'I stay calm while you do, and always strike back if you strike', wiring: 'A = NAND(IN0, IN0) = ¬IN0; OUT0 = NAND(A, A) = IN0. Two inversions cancel out.' },
-  2: { name: 'Contrarian', gate: 'NOT', desc: 'I strike when you cooperate, and cooperate when you strike', wiring: 'OUT0 = NAND(IN0, IN0) = ¬IN0. A single NAND is an inverter.' },
-  3: { name: 'Redemptionist', gate: 'constant 1', desc: 'Always believes in good faith', wiring: 'A = NAND(IN0, IN0) = ¬IN0; OUT0 = NAND(IN0, A) = ¬(x ∧ ¬x) = 1.' },
-  4: { name: 'Cleaner', gate: 'constant 0', desc: 'Dark forest hunter, strikes at any light', wiring: 'Add one more NAND(B, B) inverter after the Redemptionist’s constant 1: OUT0 = ¬1 = 0.' },
+  1: { name: 'Swordholder', gate: 'pass-through', desc: 'I stay calm while you do, and always strike back if you strike', wiring: '4 NANDs in a chain, each with both inputs tied together (an inverter): four inversions cancel out, OUT0 = IN0.' },
+  2: { name: 'Contrarian', gate: 'NOT', desc: 'I strike when you cooperate, and cooperate when you strike', wiring: '3 NANDs in a chain, each an inverter: three inversions, OUT0 = ¬IN0.' },
+  3: { name: 'Redemptionist', gate: 'constant 1', desc: 'Always believes in good faith', wiring: 'A = NAND(IN0, IN0) = ¬IN0; B = NAND(IN0, A) = ¬(x ∧ ¬x) = 1; then 2 inverter NANDs: OUT0 = 1. 4 NANDs in total.' },
+  4: { name: 'Cleaner', gate: 'constant 0', desc: 'Dark forest hunter, strikes at any light', wiring: 'The first two NANDs give constant 1 as in the Redemptionist, then 3 inverter NANDs: OUT0 = ¬1 = 0. 5 NANDs in total.' },
 };
 
 export const ERAS_EN = {

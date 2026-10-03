@@ -80,7 +80,7 @@
 - 链：X Layer 主网（chainId 196）
 - 电路合约：[`0x2503025c0355a005a60cd93c971e4e816456c8bd`](https://www.oklink.com/zh-hans/x-layer/evm/address/0x2503025c0355A005a60CD93c971E4e816456c8bd)
 - 调用方式：`eval(uint256 电路号, bytes 输入)`，免费的只读调用；输入输出按小端位序打包，bit0 是 IN0 / OUT0
-- 4 个大脑的 NFT 编号就是电路号 1～4
+- 4 个大脑的 NFT 编号就是电路号 1～4，链上网表分别是 4、3、4、5 个 NAND，共 16 个
 
 ## 开发
 
@@ -112,6 +112,7 @@ src/
   wallet.js            钱包：连接、切换 X Layer、读心烧币交易、开局承诺交易、读取链上交易
   version.js           版本号（和 package.json 一致）
   rng.js               可复现的伪随机数（同一个 seed 生成同一份干扰计划）
+  netlist.js           按链上网表模拟电路（门格式见文件注释）
   commit.js            开局承诺：生成承诺原文和哈希、编码交易 data、赛后验证
   keccak.js            keccak256 的纯 JS 实现（无依赖）
   threebody.js         三体运动数值模拟（蛙跳法积分），驱动背景动画
@@ -122,6 +123,8 @@ web/                   浏览器界面（原生 HTML / CSS / JS 模块）
   i18n.js              中英文切换：当前语言、翻译函数、静态文案套用
   i18n/                界面文案（zh.js、en.js 键名一一对应）、大脑和纪元的英文、设计指南
   starfield.js         背景：三体星系实时引力模拟的 Canvas 渲染，随纪元切换
+  brainviz.js          大脑卡片：线框大脑 + 链上 NAND 网表，悬停 / 选中时信号逐门传播
+  eraviz.js            纪元卡片：天空、温度计、光照条（只营造氛围，不影响计分）
 scripts/               本地服务器、批量模拟、链上核对
 test/                  单元测试（node:test）
 docs/brain-spec.md     玩家自定义大脑的接口规范和准入检查（后续扩展）
