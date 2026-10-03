@@ -22,14 +22,77 @@ let aiPolicy;
 let seed;
 
 function renderCircuits() {
+  // 说明按钮和选择按钮是兄弟元素（按钮不能嵌套按钮），用绝对定位放在卡片右上角。
   $('circuit-list').innerHTML = CIRCUITS.map(
-    (c) => `<button type="button" class="circuit" role="radio" data-id="${c.id}" aria-checked="${c.id === selected}">
-      <div class="name">#${c.id} ${c.name}</div>
-      <div class="meta">电路：${c.gate}</div>
-      ${c.nftId ? `<div class="meta chain">NFT #${c.nftId} · TapeID ${c.tapeoutId}</div>` : ''}
-      <div class="desc">${c.desc}</div>
-    </button>`,
+    (c) => `<div class="circuit-card">
+      <button type="button" class="circuit" role="radio" data-id="${c.id}" aria-checked="${c.id === selected}">
+        <div class="name">#${c.id} ${c.name}</div>
+        <div class="meta">电路：${c.gate}</div>
+        ${c.nftId ? `<div class="meta chain">NFT #${c.nftId} · TapeID ${c.tapeoutId}</div>` : ''}
+        <div class="desc">${c.desc}</div>
+      </button>
+      <button type="button" class="btn-info" data-info="${c.id}" aria-haspopup="dialog" aria-label="#${c.id} ${c.name} 的输入输出说明">!</button>
+    </div>`,
   ).join('');
+}
+
+// 对方连续 4 轮的动作，用来演示每个大脑怎么回应。
+const DEMO_OPPONENT = [1, 0, 0, 1];
+const plainAction = (a) => (a === ATTACK ? '打击' : '交流');
+
+async function openBrainInfo(id) {
+  const c = getCircuit(id);
+  const [out0, out1] = [await localEvaluator.evaluate(id, 0), await localEvaluator.evaluate(id, 1)];
+  // 示例：第 1 轮默认输入交流，之后每轮的输入是对方上一轮的动作。
+  const demo = [];
+  for (let i = 0; i < DEMO_OPPONENT.length; i++) {
+    const input = i === 0 ? 1 : DEMO_OPPONENT[i - 1];
+    demo.push({ round: i + 1, input, output: await localEvaluator.evaluate(id, input), opp: DEMO_OPPONENT[i] });
+  }
+  $('brain-title').textContent = `#${c.id} ${c.name}`;
+  $('brain-body').innerHTML = `
+    <p>${c.desc}。电路类型：${c.gate}。</p>
+    <h3>输入和输出</h3>
+    <p>输入 IN0 是对方上一轮的动作，输出 OUT0 是我这一轮的动作。1 = 交流，0 = 打击。第 1 轮没有上一轮，默认输入 1。</p>
+    <table class="log">
+      <thead><tr><th scope="col">输入 IN0（对方上一轮）</th><th scope="col">输出 OUT0（我这一轮）</th><th scope="col">链上核对</th></tr></thead>
+      <tbody>
+        <tr><td>1 交流</td><td>${actionText(out1)}（${out1}）</td><td id="brain-chain-1">—</td></tr>
+        <tr><td>0 打击</td><td>${actionText(out0)}（${out0}）</td><td id="brain-chain-0">—</td></tr>
+      </tbody>
+    </table>
+    <h3>例子：对方依次 交流、打击、打击、交流</h3>
+    <table class="log">
+      <thead><tr><th scope="col">轮</th><th scope="col">输入（对方上一轮）</th><th scope="col">我的输出</th><th scope="col">对方本轮</th></tr></thead>
+      <tbody>${demo
+        .map((d) => `<tr><td>${d.round}</td><td>${d.round === 1 ? '1（默认）' : `${d.input} ${plainAction(d.input)}`}</td><td>${actionText(d.output)}</td><td>${actionText(d.opp)}</td></tr>`)
+        .join('')}</tbody>
+    </table>
+    <h3>电路接法</h3>
+    <p>${c.wiring}</p>
+    ${c.nftId ? `<p class="chain-line">链上：NFT #${c.nftId} · TapeID ${c.tapeoutId}<br>合约 <a href="${TAPEOUT.explorer}" target="_blank" rel="noopener noreferrer"><code>${TAPEOUT.circuits}</code></a></p>
+    <button type="button" id="btn-brain-verify">在链上核对真值表</button>` : ''}`;
+  $('btn-brain-verify')?.addEventListener('click', () => verifyBrainOnChain(id));
+  brainDialog.showModal();
+}
+
+// 直接调用链上 eval（免费只读），把结果填进真值表的“链上核对”列。
+async function verifyBrainOnChain(id) {
+  const btn = $('btn-brain-verify');
+  btn.disabled = true;
+  btn.textContent = '链上计算中…';
+  const chain = createTapeoutEvaluator();
+  try {
+    for (const input of [1, 0]) {
+      const [onChain, local] = [await chain.evaluate(id, input), await localEvaluator.evaluate(id, input)];
+      $(`brain-chain-${input}`).innerHTML = onChain === local ? `<span class="coop">✓ eval = ${onChain}</span>` : `<span class="attack">✗ eval = ${onChain}</span>`;
+    }
+    btn.textContent = '链上核对完成';
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = '核对失败，点击重试';
+    $('brain-chain-1').innerHTML = `<span class="attack">${err.message}</span>`;
+  }
 }
 
 const eraMeta = (e) => (e.hidden ? '纪元：随机 · 赛后公开' : `${e.rounds} 轮 · 干扰率 ${Math.round(e.interferenceRate * 100)}% · ${e.allowRead ? '可读心' : '禁止读心'}`);
@@ -52,6 +115,11 @@ $('era-list').addEventListener('click', (e) => {
 });
 
 $('circuit-list').addEventListener('click', (e) => {
+  const info = e.target.closest('[data-info]');
+  if (info) {
+    openBrainInfo(Number(info.dataset.info));
+    return;
+  }
   const btn = e.target.closest('.circuit');
   if (!btn) return;
   selected = Number(btn.dataset.id);
@@ -197,16 +265,22 @@ function showResult() {
 
 $('btn-again').addEventListener('click', () => show('setup'));
 
-// 规则弹窗：默认隐藏，点“帮助 / 规则”打开；Esc、关闭按钮或点背景都能关闭。
-const rules = $('rules');
+// 弹窗：Esc、关闭按钮或点背景都能关闭。
+function setupDialog(dialog) {
+  dialog.querySelector('.btn-close-dialog').addEventListener('click', () => dialog.close());
+  dialog.addEventListener('click', (e) => {
+    // 点在弹窗矩形外才算点背景；点弹窗内边距时 target 也是 dialog，不能只看 target。
+    const box = dialog.getBoundingClientRect();
+    const outside = e.clientX < box.left || e.clientX > box.right || e.clientY < box.top || e.clientY > box.bottom;
+    if (e.target === dialog && outside) dialog.close();
+  });
+  return dialog;
+}
+
+// 规则弹窗默认隐藏，点“帮助 / 规则”打开。
+const rules = setupDialog($('rules'));
 $('btn-rules').addEventListener('click', () => rules.showModal());
-rules.querySelector('.btn-close-rules').addEventListener('click', () => rules.close());
-rules.addEventListener('click', (e) => {
-  // 点在弹窗矩形外才算点背景；点弹窗内边距时 target 也是 dialog，不能只看 target。
-  const box = rules.getBoundingClientRect();
-  const outside = e.clientX < box.left || e.clientX > box.right || e.clientY < box.top || e.clientY > box.bottom;
-  if (e.target === rules && outside) rules.close();
-});
+const brainDialog = setupDialog($('brain-info'));
 
 renderEras();
 updateEvaluatorStatus();

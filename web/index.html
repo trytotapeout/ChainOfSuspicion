@@ -64,7 +64,7 @@
     <dialog id="rules" class="rules" aria-labelledby="rules-title">
       <div class="dialog-head">
         <h2 id="rules-title">游戏规则</h2>
-        <button type="button" class="btn-close-rules" aria-label="关闭规则">关闭</button>
+        <button type="button" class="btn-close-dialog" aria-label="关闭规则">关闭</button>
       </div>
 
       <h3>1. 你是谁，你要做什么</h3>
@@ -202,6 +202,13 @@
 
       <h4>例 H：清理者遇到执剑人</h4>
       <p>你选 #4 清理者，对方选 #1 执剑人，没有干扰。第 1 轮你偷袭得手 5 : 0，之后执剑人一直还手，每轮 1 : 1。6 轮下来 10 : 5，你赢了，可总分只有 10。如果双方都选执剑人和平相处，各有 18 分。清理者赢得了对局，却让自己的文明更穷。</p>
+    </dialog>
+    <dialog id="brain-info" class="rules" aria-labelledby="brain-title">
+      <div class="dialog-head">
+        <h2 id="brain-title"></h2>
+        <button type="button" class="btn-close-dialog" aria-label="关闭大脑说明">关闭</button>
+      </div>
+      <div id="brain-body"></div>
     </dialog>
   </main>
   <script type="module" src="/web/app.js"></script>
