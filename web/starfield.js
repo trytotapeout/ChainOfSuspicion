@@ -50,11 +50,12 @@ export function createStarfield(canvas, caption, anchor) {
     trails = [...sim.suns, sim.planet].map(() => []);
   }
 
-  // 星系中心：右侧留白足够宽时画在留白中间，否则画在视口中间偏上（内容背后）。
+  // 星系中心：宽屏时偏向右侧留白，但往内容区靠一些，让轨道从玻璃卡片后面穿过；
+  // 窄屏时画在视口中间（内容背后）。
   function view() {
     const right = anchor ? anchor.getBoundingClientRect().right : w / 2;
     const free = w - right;
-    if (free > 320) return { cx: right + free / 2, cy: h * 0.45, scale: (Math.min(free, h) / 2 / VIEW_RADIUS) * 0.95 };
+    if (free > 320) return { cx: right + free * 0.08, cy: h * 0.5, scale: (Math.min(free * 1.6, h) / 2 / VIEW_RADIUS) * 1.1 };
     return { cx: w / 2, cy: h * 0.4, scale: (Math.min(w, h) / 2 / VIEW_RADIUS) * 1.05 };
   }
 
