@@ -27,6 +27,14 @@ export const ERAS = [
     desc: '三颗太阳同时升起，读心失效。误会无法澄清，只能靠大脑本身扛住猜疑链。',
   },
   {
+    id: 'flying',
+    name: '飞星纪元',
+    rounds: 10,
+    interferenceRate: 0.2,
+    allowRead: true,
+    desc: '一颗太阳近在身边，另外两颗远成飞星。天象看似平静，智子却时隐时现，打击是真是假最难判断，读不读心最考验策略。',
+  },
+  {
     id: 'unknown',
     name: '未知纪元',
     hidden: ['stable', 'chaotic'],

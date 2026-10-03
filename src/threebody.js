@@ -6,9 +6,13 @@
 //   stable  恒纪元：Chenciner–Montgomery 8 字形周期解，三颗太阳沿同一条 8 字轨道永远互相追逐
 //   chaotic 乱纪元：随机初始条件，混沌运动；太阳被甩飞就重新开始
 //   triple  三日凌空：欧拉共线解，三颗太阳排成一线一起旋转（不稳定，偏离后重置）
+//   flying  飞星纪元：一颗太阳在近处，星球绕它运行；另外两颗太阳组成紧密双星在远处绕行，
+//           从星球上看就是两颗“飞星”。这种分层构型长期稳定。
 
 export const DT = 0.002;
-const SOFTENING = { stable: 0, chaotic: 0.1, triple: 0 };
+const SOFTENING = { stable: 0, chaotic: 0.1, triple: 0, flying: 0 };
+// 飞星构型参数：双星间距、双星质心到近处太阳的距离、星球绕近处太阳的轨道半径
+const FLYING = { binary: 0.3, distance: 2.8, planetOrbit: 0.4 };
 const PLANET_ORBIT = 2.4;
 const PLANET_SOFTENING = 0.05;
 const ESCAPE_RADIUS = 6; // 太阳离质心超过这个距离视为被甩飞
@@ -58,6 +62,18 @@ export function initialSuns(mode, rng = Math.random) {
       { x: 0, y: 0, vx: v3[0], vy: v3[1] },
     ];
   }
+  if (mode === 'flying') {
+    // 近处太阳（质量 1）与双星（总质量 2）做两体圆周运动，双星内部再互相绕转。
+    const R = FLYING.distance;
+    const d = FLYING.binary;
+    const vrel = Math.sqrt(3 / R);
+    const vb = Math.sqrt(2 / d) / 2;
+    return toCenterOfMassFrame([
+      { x: 0, y: 0, vx: 0, vy: (-vrel * 2) / 3 },
+      { x: R - d / 2, y: 0, vx: 0, vy: vrel / 3 + vb },
+      { x: R + d / 2, y: 0, vx: 0, vy: vrel / 3 - vb },
+    ]);
+  }
   if (mode === 'triple') {
     // 外侧太阳受到的引力 1/1² + 1/2² = 5/4，正好提供半径 1 的圆周运动所需的向心力。
     const v = Math.sqrt(5 / 4);
@@ -76,8 +92,15 @@ export function initialSuns(mode, rng = Math.random) {
   return initialSuns('stable');
 }
 
-function spawnPlanet(rng) {
+function spawnPlanet(rng, mode, suns) {
   const a = rng() * Math.PI * 2;
+  if (mode === 'flying') {
+    // 绕近处那颗太阳（suns[0]）做圆周运动
+    const [s] = suns;
+    const r = FLYING.planetOrbit;
+    const v = Math.sqrt(1 / r);
+    return { x: s.x + r * Math.cos(a), y: s.y + r * Math.sin(a), vx: s.vx - v * Math.sin(a), vy: s.vy + v * Math.cos(a) };
+  }
   const v = Math.sqrt(3 / PLANET_ORBIT); // 绕总质量 3 的圆轨道速度
   return { x: PLANET_ORBIT * Math.cos(a), y: PLANET_ORBIT * Math.sin(a), vx: -v * Math.sin(a), vy: v * Math.cos(a) };
 }
@@ -120,7 +143,7 @@ export function createSimulation(mode = 'stable', rng = Math.random) {
   function reset(nextMode = sim.mode) {
     sim.mode = nextMode;
     sim.suns = initialSuns(nextMode, rng);
-    sim.planet = spawnPlanet(rng);
+    sim.planet = spawnPlanet(rng, nextMode, sim.suns);
     sim.time = 0;
     carry = 0;
   }
@@ -158,7 +181,7 @@ export function createSimulation(mode = 'stable', rng = Math.random) {
     }
     const p = sim.planet;
     if (Math.hypot(p.x, p.y) > PLANET_LOST_RADIUS || sim.suns.some((s) => Math.hypot(s.x - p.x, s.y - p.y) < PLANET_BURN_RADIUS)) {
-      sim.planet = spawnPlanet(rng);
+      sim.planet = spawnPlanet(rng, sim.mode, sim.suns);
       sim.destroyed += 1;
       events.push('planet-destroyed');
     }

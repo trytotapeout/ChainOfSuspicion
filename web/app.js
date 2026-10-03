@@ -17,7 +17,7 @@ const actionText = (a) => (a === ATTACK ? '<span class="attack">打击</span>' :
 
 // 背景：三体星系实时引力模拟，跟随纪元切换。未知纪元在对局中统一画乱纪元，不泄露真实纪元。
 const starfield = createStarfield($('starfield'), $('starfield-caption'));
-const ERA_SKY = { stable: 'stable', chaotic: 'chaotic', triple: 'triple', unknown: 'chaotic' };
+const ERA_SKY = { stable: 'stable', chaotic: 'chaotic', triple: 'triple', flying: 'flying', unknown: 'chaotic' };
 
 let selected = 1;
 let selectedEra = 'stable';
@@ -44,7 +44,73 @@ function renderCircuits() {
       <button type="button" class="btn-info" data-info="${c.id}" aria-haspopup="dialog" aria-label="#${c.id} ${c.name} 的输入输出说明">!</button>
       ${c.mintTx ? `<a class="mint-link" href="${mintTxUrl(c.mintTx)}" target="_blank" rel="noopener noreferrer" aria-label="#${c.id} ${c.name} 的铸造交易（OKLink）">铸造交易 ↗</a>` : ''}
     </div>`,
-  ).join('');
+  ).join('') +
+    // 第 5 张卡：自定义大脑的设计指南，目前只做说明，不能出战。
+    `<div class="circuit-card">
+      <button type="button" class="circuit custom-brain" data-custom aria-haspopup="dialog">
+        <div class="name">#5 设计你的大脑</div>
+        <div class="meta">电路：三位输入 · 敬请期待</div>
+        <div class="desc">看得更远、记得更多的三体大脑。点击查看设计方法。</div>
+      </button>
+    </div>`;
+}
+
+// 三位输入：bit0 对方上一轮，bit1 对方上上轮，bit2 我方上一轮。
+const DESIGN_EXAMPLES = [
+  { name: '宽容执剑人', hex: '0xEE', rule: '对方连续两轮打击才还手', fn: (o1, o2) => o1 | o2, gates: 'OUT = NAND(¬IN0, ¬IN1)，约 3 个 NAND' },
+  { name: '巴甫洛夫', hex: '0xA5', rule: '赢了保持，输了就换：对方上轮交流就重复我上轮的动作，对方上轮打击就换一种动作', fn: (o1, o2, me) => (me === o1 ? 1 : 0), gates: 'OUT = IN0 同或 IN2（XNOR），约 5 个 NAND' },
+  { name: '记仇者', hex: '0x88', rule: '对方连续两轮交流才肯交流', fn: (o1, o2) => o1 & o2, gates: 'OUT = ¬NAND(IN0, IN1)，约 2 个 NAND' },
+];
+
+function openDesignGuide() {
+  const [tolerant] = DESIGN_EXAMPLES;
+  const rows = [];
+  for (let i = 0; i < 8; i++) {
+    const [o1, o2, me] = [i & 1, (i >> 1) & 1, (i >> 2) & 1];
+    rows.push(`<tr><td>${i}</td><td>${me}</td><td>${o2}</td><td>${o1}</td><td>${actionText(tolerant.fn(o1, o2, me))}</td></tr>`);
+  }
+  $('brain-title').textContent = '#5 设计你的大脑';
+  $('brain-body').innerHTML = `
+    <p>内置的 4 个大脑只有 1 位输入：只看对方上一轮。1 位输入的电路一共只有 4 种行为，就是现在这 4 个。想要更聪明的大脑，就要让它看到更多历史。</p>
+    <h3>1. 三位输入接口</h3>
+    <table class="log">
+      <thead><tr><th scope="col">输入引脚</th><th scope="col">含义</th></tr></thead>
+      <tbody>
+        <tr><td>IN0</td><td>对方上一轮的动作</td></tr>
+        <tr><td>IN1</td><td>对方上上轮的动作</td></tr>
+        <tr><td>IN2</td><td>我方上一轮的动作</td></tr>
+        <tr><td>OUT0</td><td>我这一轮的动作</td></tr>
+      </tbody>
+    </table>
+    <p>1 = 交流，0 = 打击。开局历史不够时一律补 1（视为交流）。8 种输入、每种输出 0 或 1，一共有 256 种大脑。</p>
+    <h3>2. 设计步骤</h3>
+    <ol>
+      <li>想清楚策略：比如“对方连续两次打击我才还手”。</li>
+      <li>把策略填成 8 行真值表：每一种输入组合，大脑该输出什么。</li>
+      <li>在 TapeOut 画布上用 NAND 实现：3 个输入引脚、1 个输出引脚，不要用 LATCH（时序单元必须为 0，相同输入才一定得到相同输出）。</li>
+      <li>本地自检：逐个切换 8 种输入，核对输出和真值表一致。</li>
+      <li>流片到 X Layer，拿到电路 NFT。</li>
+    </ol>
+    <h3>3. 例子：宽容执剑人（真值表 ${tolerant.hex}）</h3>
+    <p>${tolerant.rule}。</p>
+    <table class="log">
+      <thead><tr><th scope="col">输入编号</th><th scope="col">IN2 我上轮</th><th scope="col">IN1 对方上上轮</th><th scope="col">IN0 对方上轮</th><th scope="col">输出</th></tr></thead>
+      <tbody>${rows.join('')}</tbody>
+    </table>
+    <p>真值表可以记成一个 8 位数：第 i 位是输入编号为 i 时的输出。宽容执剑人只有编号 0 和 4（对方连续两轮打击）输出打击，所以是 0xEE。</p>
+    <h3>4. 更多思路</h3>
+    <table class="log">
+      <thead><tr><th scope="col">大脑</th><th scope="col">真值表</th><th scope="col">策略</th><th scope="col">NAND 实现</th></tr></thead>
+      <tbody>${DESIGN_EXAMPLES.map((e) => `<tr><td>${e.name}</td><td><code>${e.hex}</code></td><td>${e.rule}</td><td>${e.gates}</td></tr>`).join('')}</tbody>
+    </table>
+    <h3>5. 设计提示</h3>
+    <ul>
+      <li>智子干扰率高的纪元，宽容一点的大脑能扛住误会，少花读心费。</li>
+      <li>太宽容会被偷袭者占便宜；太记仇会被一次误会拖进猜疑链。</li>
+      <li>你的大脑在对局中是保密的，赛后才公开：设计时要想到对手也在研究你。</li>
+    </ul>
+    <p class="chain-line">自定义大脑出战暂未开放。接口规范和准入检查见项目文档 <a href="https://github.com/trytotapeout/ChainOfSuspicion/blob/main/docs/brain-spec.md" target="_blank" rel="noopener noreferrer">docs/brain-spec.md</a>。</p>`;
+  brainDialog.showModal();
 }
 
 // 对方连续 4 轮的动作，用来演示每个大脑怎么回应。
@@ -127,6 +193,10 @@ $('era-list').addEventListener('click', (e) => {
 });
 
 $('circuit-list').addEventListener('click', (e) => {
+  if (e.target.closest('[data-custom]')) {
+    openDesignGuide();
+    return;
+  }
   const info = e.target.closest('[data-info]');
   if (info) {
     openBrainInfo(Number(info.dataset.info));

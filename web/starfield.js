@@ -7,14 +7,14 @@ import { createSimulation } from '../src/threebody.js';
 const SUN_COLORS = ['255, 196, 120', '255, 236, 190', '255, 150, 90'];
 const PLANET_COLOR = '120, 190, 255';
 const TRAIL = { sun: 160, planet: 260 };
-const SPEED = { stable: 0.55, chaotic: 0.7, triple: 0.5 }; // 每秒推进的模拟时间
+const SPEED = { stable: 0.55, chaotic: 0.7, triple: 0.5, flying: 0.6 }; // 每秒推进的模拟时间
 const VIEW_RADIUS = 3.2; // 画面要容纳的模拟坐标半径
 // 星体大小随画面缩放（单位：模拟坐标），并设下限，小窗口里也看得清。
 const SUN_CORE = 0.11;
 const SUN_GLOW = 0.75;
 const PLANET_SIZE = 0.05;
 const size = (r, scale, min) => Math.max(min, r * scale);
-const MODE_LABEL = { stable: '恒纪元', chaotic: '乱纪元', triple: '三日凌空' };
+const MODE_LABEL = { stable: '恒纪元', chaotic: '乱纪元', triple: '三日凌空', flying: '飞星纪元' };
 
 export function createStarfield(canvas, caption) {
   const ctx = canvas.getContext('2d');

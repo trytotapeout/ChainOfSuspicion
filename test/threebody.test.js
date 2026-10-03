@@ -52,8 +52,19 @@ test('星球坠入太阳时重生，并记一次文明毁灭', () => {
   assert.equal(sim.destroyed, 1);
 });
 
+test('飞星纪元：远处双星 + 近处太阳的分层构型长期稳定，星球不会毁灭', () => {
+  const sim = createSimulation('flying', createRng(9));
+  for (let i = 0; i < 120; i++) sim.advance(0.5);
+  assert.equal(sim.destroyed, 0);
+  const [near, b, c] = sim.suns;
+  assert.ok(Math.hypot(b.x - c.x, b.y - c.y) < 0.6, '双星散开了');
+  assert.ok(Math.hypot(b.x - near.x, b.y - near.y) > 2, '飞星离得太近');
+  const d = Math.hypot(sim.planet.x - near.x, sim.planet.y - near.y);
+  assert.ok(d > 0.3 && d < 0.6, `星球偏离了近处太阳：${d}`);
+});
+
 test('长时间运行不会产生 NaN', () => {
-  for (const mode of ['stable', 'chaotic', 'triple']) {
+  for (const mode of ['stable', 'chaotic', 'triple', 'flying']) {
     const sim = createSimulation(mode, createRng(11));
     for (let i = 0; i < 50; i++) sim.advance(0.5);
     for (const b of [...sim.suns, sim.planet]) assert.ok(Number.isFinite(b.x) && Number.isFinite(b.vy), mode);
