@@ -14,12 +14,17 @@ const GATES = {
   4: () => 0, // 恒 0
 };
 
+// 同步版本：界面展示真值表时用，不需要等待。
+export function evaluateLocal(circuitId, input) {
+  if (input !== 0 && input !== 1) throw new Error(`输入必须是 0 或 1，收到 ${input}`);
+  const gate = GATES[circuitId];
+  if (!gate) throw new Error(`未知电路 #${circuitId}`);
+  return gate(input);
+}
+
 export const localEvaluator = {
   name: '本地代码模拟',
   async evaluate(circuitId, input) {
-    if (input !== 0 && input !== 1) throw new Error(`输入必须是 0 或 1，收到 ${input}`);
-    const gate = GATES[circuitId];
-    if (!gate) throw new Error(`未知电路 #${circuitId}`);
-    return gate(input);
+    return evaluateLocal(circuitId, input);
   },
 };

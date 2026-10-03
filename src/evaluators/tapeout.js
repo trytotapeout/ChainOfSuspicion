@@ -63,7 +63,8 @@ export function createTapeoutEvaluator({ fetchImpl, rpcs = RPCS, contract = TAPE
           clearTimeout(timer);
         }
       }
-      throw new Error(`链上 eval 调用失败（电路 #${circuitNo}）：${lastError?.message ?? lastError}`);
+      const detail = lastError?.message ?? String(lastError);
+      throw Object.assign(new Error(`链上 eval 调用失败（电路 #${circuitNo}）：${detail}`), { i18n: { key: 'eval', params: { circuit: circuitNo, detail } } });
     },
   };
   return evaluator;

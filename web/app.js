@@ -3,31 +3,51 @@ import { createMatch, ATTACK } from '../src/engine.js';
 import { pickCircuit, createReadPolicy } from '../src/ai.js';
 import { randomSeed } from '../src/rng.js';
 import { ERAS, resolveEra, eraConfig } from '../src/eras.js';
+import { VERSION } from '../src/version.js';
 import { createStarfield } from './starfield.js';
-import { createWallet, detectProvider, friendlyWalletError, txUrl, READ_FEE_LABEL, BURN_ADDRESS, readTransaction } from '../src/wallet.js';
+import { createWallet, detectProvider, txUrl, READ_FEE_LABEL, BURN_ADDRESS, readTransaction } from '../src/wallet.js';
 import { randomSalt, computeCommitment, commitCalldata, commitmentPreimage, parseCommitCalldata, verifyMatch } from '../src/commit.js';
-import { localEvaluator } from '../src/evaluators/local.js';
+import { localEvaluator, evaluateLocal } from '../src/evaluators/local.js';
 import { createTapeoutEvaluator } from '../src/evaluators/tapeout.js';
+import { t, getLang, setLang, onLangChange, applyStatic, circuitText, eraText } from './i18n.js';
+import { designGuideHtml } from './i18n/guide.js';
 
 // 默认用 X Layer 链上的真实电路计算；断网或 RPC 不可用时可以切到本地模拟。
 const EVALUATORS = { chain: () => createTapeoutEvaluator(), local: () => localEvaluator };
 let evaluator;
+let evaluatorKind = 'chain';
 
+const X_HANDLE = 'x.com/boostbob';
 const $ = (id) => document.getElementById(id);
-const actionText = (a) => (a === ATTACK ? '<span class="attack">打击</span>' : '<span class="coop">交流</span>');
+const actionWord = (a) => t(a === ATTACK ? 'action.attack' : 'action.coop');
+const actionText = (a) => `<span class="${a === ATTACK ? 'attack' : 'coop'}">${actionWord(a)}</span>`;
+const brainLabel = (id) => `#${id} ${circuitText(id).name}`;
+const txLink = (hash, key = 'status.viewTx') => `<a href="${txUrl(hash)}" target="_blank" rel="noopener noreferrer">${t(key)}</a>`;
+
+// 报错翻译：钱包取消等标准错误码，以及库里带 i18n 键名的错误；其他情况显示原始信息。
+function errorText(err) {
+  if (err?.code === 4001) return t('err.wallet.rejected');
+  if (err?.code === -32002) return t('err.wallet.pending');
+  if (err?.i18n) return t(`err.wallet.${err.i18n.key}`, err.i18n.params);
+  return err?.message ?? String(err);
+}
 
 // 背景：三体星系实时引力模拟，跟随纪元切换。未知纪元在对局中统一画乱纪元，不泄露真实纪元。
 const starfield = createStarfield($('starfield'));
 let destroyedAtStart = 0; // 开局时背景里三体文明累计毁灭次数，结算时算出本局毁灭了几次
+let destroyedThisMatch = 0;
 const ERA_SKY = { stable: 'stable', chaotic: 'chaotic', triple: 'triple', flying: 'flying', unknown: 'chaotic' };
 
 let selected = 1;
 let selectedEra = 'stable';
 let era; // { era, hidden }：本局实际纪元，hidden 表示玩家选的是未知纪元
 let match;
+let matchStarted = false;
 let aiCircuit;
 let aiPolicy;
 let seed;
+let roundNo = 1;
+let logRows = []; // 每轮结算结果，切换语言时用它重画对局记录
 // 读心付费：开局勾选后，每次读心先在 X Layer 上烧 0.0001 OKB，交易确认后才读心。
 const wallet = createWallet({ getProvider: () => detectProvider(window) });
 let payToRead = false;
@@ -35,158 +55,123 @@ let readTxs = {}; // round → 读心交易哈希
 // 开局承诺：本局秘密（含 salt）和上链交易，赛后公开并可链上验证
 let commitSecret = null;
 let commitTx = null;
+let verifyState = null; // null | { loading } | { error } | { tx, result }
+const brainChecks = {}; // 大脑说明弹窗里的链上核对结果：id → { state, values, error }
+let openDialog = null; // 当前打开的大脑弹窗：{ type: 'brain', id } | { type: 'guide' }
+
+// 对局提示区：当前的渲染函数存起来，切换语言时重画。渲染函数只负责显示，不能有副作用。
+let view = null;
+let rerendering = false;
+function setView(fn) {
+  view = fn;
+  fn();
+}
 
 function renderCircuits() {
   // 说明按钮和选择按钮是兄弟元素（按钮不能嵌套按钮），用绝对定位放在卡片右上角。
-  $('circuit-list').innerHTML = CIRCUITS.map(
-    (c) => `<div class="circuit-card">
+  $('circuit-list').innerHTML =
+    CIRCUITS.map((base) => {
+      const c = circuitText(base.id);
+      const label = brainLabel(c.id);
+      return `<div class="circuit-card">
       <button type="button" class="circuit" role="radio" data-id="${c.id}" aria-checked="${c.id === selected}">
-        <div class="name">#${c.id} ${c.name}</div>
-        <div class="meta">电路：${c.gate}</div>
+        <div class="name">${label}</div>
+        <div class="meta">${t('card.gate', { gate: c.gate })}</div>
         ${c.nftId ? `<div class="meta chain">NFT #${c.nftId} · TapeID ${c.tapeoutId}</div>` : ''}
         <div class="desc">${c.desc}</div>
       </button>
-      <button type="button" class="btn-info" data-info="${c.id}" aria-haspopup="dialog" aria-label="#${c.id} ${c.name} 的输入输出说明">!</button>
-      ${c.mintTx ? `<a class="mint-link" href="${mintTxUrl(c.mintTx)}" target="_blank" rel="noopener noreferrer" aria-label="#${c.id} ${c.name} 的铸造交易（OKLink）">铸造交易 ↗</a>` : ''}
-    </div>`,
-  ).join('') +
+      <button type="button" class="btn-info" data-info="${c.id}" aria-haspopup="dialog" aria-label="${t('card.info.aria', { name: label })}">!</button>
+      ${c.mintTx ? `<a class="mint-link" href="${mintTxUrl(c.mintTx)}" target="_blank" rel="noopener noreferrer" aria-label="${t('card.mint.aria', { name: label })}">${t('card.mint')}</a>` : ''}
+    </div>`;
+    }).join('') +
     // 第 5 张卡：自定义大脑的设计指南，目前只做说明，不能出战。
     `<div class="circuit-card">
       <button type="button" class="circuit custom-brain" data-custom aria-haspopup="dialog">
-        <div class="name">#5 设计你的大脑</div>
-        <div class="meta">参考 3 位输入电路逻辑</div>
-        <div class="desc">看得更远、记得更多的三体大脑。点击查看设计方法。</div>
+        <div class="name">${t('custom.name')}</div>
+        <div class="meta">${t('custom.meta')}</div>
+        <div class="desc">${t('custom.desc')}</div>
       </button>
     </div>`;
 }
 
-// 三位输入：bit0 对方上一轮，bit1 对方上上轮，bit2 我方上一轮。
-const DESIGN_EXAMPLES = [
-  { name: '宽容执剑人', hex: '0xEE', rule: '对方连续两轮打击才还手', fn: (o1, o2) => o1 | o2, gates: 'OUT = NAND(¬IN0, ¬IN1)，约 3 个 NAND' },
-  { name: '巴甫洛夫', hex: '0xA5', rule: '赢了保持，输了就换：对方上轮交流就重复我上轮的动作，对方上轮打击就换一种动作', fn: (o1, o2, me) => (me === o1 ? 1 : 0), gates: 'OUT = IN0 同或 IN2（XNOR），约 5 个 NAND' },
-  { name: '记仇者', hex: '0x88', rule: '对方连续两轮交流才肯交流', fn: (o1, o2) => o1 & o2, gates: 'OUT = ¬NAND(IN0, IN1)，约 2 个 NAND' },
-];
-
-function openDesignGuide() {
-  const [tolerant] = DESIGN_EXAMPLES;
-  const rows = [];
-  for (let i = 0; i < 8; i++) {
-    const [o1, o2, me] = [i & 1, (i >> 1) & 1, (i >> 2) & 1];
-    rows.push(`<tr><td>${i}</td><td>${me}</td><td>${o2}</td><td>${o1}</td><td>${actionText(tolerant.fn(o1, o2, me))}</td></tr>`);
-  }
-  $('brain-title').textContent = '#5 设计你的大脑';
-  $('brain-body').innerHTML = `
-    <p>内置的 4 个大脑只有 1 位输入：只看对方上一轮。1 位输入的电路一共只有 4 种行为，就是现在这 4 个。想要更聪明的大脑，就要让它看到更多历史。</p>
-    <h3>1. 三位输入接口</h3>
-    <table class="log">
-      <thead><tr><th scope="col">输入引脚</th><th scope="col">含义</th></tr></thead>
-      <tbody>
-        <tr><td>IN0</td><td>对方上一轮的动作</td></tr>
-        <tr><td>IN1</td><td>对方上上轮的动作</td></tr>
-        <tr><td>IN2</td><td>我方上一轮的动作</td></tr>
-        <tr><td>OUT0</td><td>我这一轮的动作</td></tr>
-      </tbody>
-    </table>
-    <p>1 = 交流，0 = 打击。开局历史不够时一律补 1（视为交流）。8 种输入、每种输出 0 或 1，一共有 256 种大脑。</p>
-    <h3>2. 设计步骤</h3>
-    <ol>
-      <li>想清楚策略：比如“对方连续两次打击我才还手”。</li>
-      <li>把策略填成 8 行真值表：每一种输入组合，大脑该输出什么。</li>
-      <li>在 TapeOut 画布上用 NAND 实现：3 个输入引脚、1 个输出引脚，不要用 LATCH（时序单元必须为 0，相同输入才一定得到相同输出）。</li>
-      <li>本地自检：逐个切换 8 种输入，核对输出和真值表一致。</li>
-      <li>流片到 X Layer，拿到电路 NFT。</li>
-    </ol>
-    <h3>3. 例子：宽容执剑人（真值表 ${tolerant.hex}）</h3>
-    <p>${tolerant.rule}。</p>
-    <table class="log">
-      <thead><tr><th scope="col">输入编号</th><th scope="col">IN2 我上轮</th><th scope="col">IN1 对方上上轮</th><th scope="col">IN0 对方上轮</th><th scope="col">输出</th></tr></thead>
-      <tbody>${rows.join('')}</tbody>
-    </table>
-    <p>真值表可以记成一个 8 位数：第 i 位是输入编号为 i 时的输出。宽容执剑人只有编号 0 和 4（对方连续两轮打击）输出打击，所以是 0xEE。</p>
-    <h3>4. 更多思路</h3>
-    <table class="log">
-      <thead><tr><th scope="col">大脑</th><th scope="col">真值表</th><th scope="col">策略</th><th scope="col">NAND 实现</th></tr></thead>
-      <tbody>${DESIGN_EXAMPLES.map((e) => `<tr><td>${e.name}</td><td><code>${e.hex}</code></td><td>${e.rule}</td><td>${e.gates}</td></tr>`).join('')}</tbody>
-    </table>
-    <h3>5. 设计提示</h3>
-    <ul>
-      <li>智子干扰率高的纪元，宽容一点的大脑能扛住误会，少花读心费。</li>
-      <li>太宽容会被偷袭者占便宜；太记仇会被一次误会拖进猜疑链。</li>
-      <li>你的大脑在对局中是保密的，赛后才公开：设计时要想到对手也在研究你。</li>
-    </ul>
-    <p class="chain-line">自定义大脑出战暂未开放。接口规范和准入检查见项目文档 <a href="https://github.com/trytotapeout/ChainOfSuspicion/blob/main/docs/brain-spec.md" target="_blank" rel="noopener noreferrer">docs/brain-spec.md</a>。</p>`;
-  brainDialog.showModal();
+function renderDesignGuide() {
+  $('brain-title').textContent = t('custom.name');
+  $('brain-body').innerHTML = designGuideHtml(getLang(), actionText);
 }
 
 // 对方连续 4 轮的动作，用来演示每个大脑怎么回应。
 const DEMO_OPPONENT = [1, 0, 0, 1];
-const plainAction = (a) => (a === ATTACK ? '打击' : '交流');
 
-async function openBrainInfo(id) {
-  const c = getCircuit(id);
-  const [out0, out1] = [await localEvaluator.evaluate(id, 0), await localEvaluator.evaluate(id, 1)];
+function renderBrainInfo(id) {
+  const c = circuitText(id);
+  const out = { 0: evaluateLocal(id, 0), 1: evaluateLocal(id, 1) };
   // 示例：第 1 轮默认输入交流，之后每轮的输入是对方上一轮的动作。
-  const demo = [];
-  for (let i = 0; i < DEMO_OPPONENT.length; i++) {
+  const demo = DEMO_OPPONENT.map((opp, i) => {
     const input = i === 0 ? 1 : DEMO_OPPONENT[i - 1];
-    demo.push({ round: i + 1, input, output: await localEvaluator.evaluate(id, input), opp: DEMO_OPPONENT[i] });
-  }
-  $('brain-title').textContent = `#${c.id} ${c.name}`;
+    return { round: i + 1, input, output: evaluateLocal(id, input), opp };
+  });
+  const check = brainChecks[id];
+  const chainCell = (input) => {
+    if (!check?.values || !(input in check.values)) return '—';
+    const v = check.values[input];
+    return v === out[input] ? `<span class="coop">✓ eval = ${v}</span>` : `<span class="attack">✗ eval = ${v}</span>`;
+  };
+  const verifyLabel = check?.state === 'loading' ? t('brain.verifying') : check?.state === 'done' ? t('brain.verified') : check?.state === 'error' ? t('brain.verifyFail') : t('brain.verify');
+  $('brain-title').textContent = brainLabel(id);
   $('brain-body').innerHTML = `
-    <p>${c.desc}。电路类型：${c.gate}。</p>
-    <h3>输入和输出</h3>
-    <p>输入 IN0 是对方上一轮的动作，输出 OUT0 是我这一轮的动作。1 = 交流，0 = 打击。第 1 轮没有上一轮，默认输入 1。</p>
+    <p>${t('brain.intro', { desc: c.desc, gate: c.gate })}</p>
+    <h3>${t('brain.io')}</h3>
+    <p>${t('brain.ioText')}</p>
     <table class="log">
-      <thead><tr><th scope="col">输入 IN0（对方上一轮）</th><th scope="col">输出 OUT0（我这一轮）</th><th scope="col">链上核对</th></tr></thead>
+      <thead><tr><th scope="col">${t('brain.colIn')}</th><th scope="col">${t('brain.colOut')}</th><th scope="col">${t('brain.colChain')}</th></tr></thead>
       <tbody>
-        <tr><td>1 交流</td><td>${actionText(out1)}（${out1}）</td><td id="brain-chain-1">—</td></tr>
-        <tr><td>0 打击</td><td>${actionText(out0)}（${out0}）</td><td id="brain-chain-0">—</td></tr>
+        <tr><td>1 ${actionWord(1)}</td><td>${actionText(out[1])}（${out[1]}）</td><td>${chainCell(1)}</td></tr>
+        <tr><td>0 ${actionWord(0)}</td><td>${actionText(out[0])}（${out[0]}）</td><td>${chainCell(0)}</td></tr>
       </tbody>
     </table>
-    <h3>例子：对方依次 交流、打击、打击、交流</h3>
+    ${check?.state === 'error' ? `<p class="attack">${errorText(check.error)}</p>` : ''}
+    <h3>${t('brain.demo')}</h3>
     <table class="log">
-      <thead><tr><th scope="col">轮</th><th scope="col">输入（对方上一轮）</th><th scope="col">我的输出</th><th scope="col">对方本轮</th></tr></thead>
-      <tbody>${demo
-        .map((d) => `<tr><td>${d.round}</td><td>${d.round === 1 ? '1（默认）' : `${d.input} ${plainAction(d.input)}`}</td><td>${actionText(d.output)}</td><td>${actionText(d.opp)}</td></tr>`)
-        .join('')}</tbody>
+      <thead><tr><th scope="col">${t('log.round')}</th><th scope="col">${t('brain.demoIn')}</th><th scope="col">${t('brain.demoOut')}</th><th scope="col">${t('brain.demoOpp')}</th></tr></thead>
+      <tbody>${demo.map((d) => `<tr><td>${d.round}</td><td>${d.round === 1 ? t('brain.default') : `${d.input} ${actionWord(d.input)}`}</td><td>${actionText(d.output)}</td><td>${actionText(d.opp)}</td></tr>`).join('')}</tbody>
     </table>
-    <h3>电路接法</h3>
+    <h3>${t('brain.wiring')}</h3>
     <p>${c.wiring}</p>
-    ${c.nftId ? `<p class="chain-line">链上：NFT #${c.nftId} · TapeID ${c.tapeoutId}<br>合约 <a href="${TAPEOUT.explorer}" target="_blank" rel="noopener noreferrer"><code>${TAPEOUT.circuits}</code></a>${c.mintTx ? `<br>铸造交易 <a href="${mintTxUrl(c.mintTx)}" target="_blank" rel="noopener noreferrer"><code>${c.mintTx}</code></a>` : ''}</p>
-    <button type="button" id="btn-brain-verify">在链上核对真值表</button>` : ''}`;
-  $('btn-brain-verify')?.addEventListener('click', () => verifyBrainOnChain(id));
-  brainDialog.showModal();
+    ${c.nftId ? `<p class="chain-line">${t('brain.chain', { nft: c.nftId, tape: c.tapeoutId })}<br>${t('brain.contract')} <a href="${TAPEOUT.explorer}" target="_blank" rel="noopener noreferrer"><code>${TAPEOUT.circuits}</code></a>${c.mintTx ? `<br>${t('brain.mintTx')} <a href="${mintTxUrl(c.mintTx)}" target="_blank" rel="noopener noreferrer"><code>${c.mintTx}</code></a>` : ''}</p>
+    <button type="button" id="btn-brain-verify" data-verify="${id}" ${check?.state === 'loading' || check?.state === 'done' ? 'disabled' : ''}>${verifyLabel}</button>` : ''}`;
+}
+
+function renderOpenDialog() {
+  if (openDialog?.type === 'brain') renderBrainInfo(openDialog.id);
+  if (openDialog?.type === 'guide') renderDesignGuide();
 }
 
 // 直接调用链上 eval（免费只读），把结果填进真值表的“链上核对”列。
 async function verifyBrainOnChain(id) {
-  const btn = $('btn-brain-verify');
-  btn.disabled = true;
-  btn.textContent = '链上计算中…';
+  brainChecks[id] = { state: 'loading', values: {} };
+  renderOpenDialog();
   const chain = createTapeoutEvaluator();
   try {
-    for (const input of [1, 0]) {
-      const [onChain, local] = [await chain.evaluate(id, input), await localEvaluator.evaluate(id, input)];
-      $(`brain-chain-${input}`).innerHTML = onChain === local ? `<span class="coop">✓ eval = ${onChain}</span>` : `<span class="attack">✗ eval = ${onChain}</span>`;
-    }
-    btn.textContent = '链上核对完成';
+    for (const input of [1, 0]) brainChecks[id].values[input] = await chain.evaluate(id, input);
+    brainChecks[id].state = 'done';
   } catch (err) {
-    btn.disabled = false;
-    btn.textContent = '核对失败，点击重试';
-    $('brain-chain-1').innerHTML = `<span class="attack">${err.message}</span>`;
+    brainChecks[id] = { state: 'error', values: brainChecks[id].values, error: err };
   }
+  if (openDialog?.type === 'brain' && openDialog.id === id) renderBrainInfo(id);
 }
 
-const eraMeta = (e) => (e.hidden ? '纪元：随机 · 赛后公开' : `${e.rounds} 轮 · 干扰率 ${Math.round(e.interferenceRate * 100)}% · ${e.allowRead ? '可读心' : '禁止读心'}`);
+const eraMeta = (e) =>
+  e.hidden ? t('era.meta.hidden') : t('era.meta', { rounds: e.rounds, rate: Math.round(e.interferenceRate * 100), read: t(e.allowRead ? 'era.read.yes' : 'era.read.no') });
 
 function renderEras() {
-  $('era-list').innerHTML = ERAS.map(
-    (e) => `<button type="button" class="circuit" role="radio" data-era="${e.id}" aria-checked="${e.id === selectedEra}">
+  $('era-list').innerHTML = ERAS.map((base) => {
+    const e = eraText(base.id);
+    return `<button type="button" class="circuit" role="radio" data-era="${e.id}" aria-checked="${e.id === selectedEra}">
       <div class="name">${e.name}</div>
       <div class="meta chain">${eraMeta(e)}</div>
       <div class="desc">${e.desc}</div>
-    </button>`,
-  ).join('');
+    </button>`;
+  }).join('');
 }
 
 $('era-list').addEventListener('click', (e) => {
@@ -199,18 +184,27 @@ $('era-list').addEventListener('click', (e) => {
 
 $('circuit-list').addEventListener('click', (e) => {
   if (e.target.closest('[data-custom]')) {
-    openDesignGuide();
+    openDialog = { type: 'guide' };
+    renderDesignGuide();
+    brainDialog.showModal();
     return;
   }
   const info = e.target.closest('[data-info]');
   if (info) {
-    openBrainInfo(Number(info.dataset.info));
+    openDialog = { type: 'brain', id: Number(info.dataset.info) };
+    renderBrainInfo(openDialog.id);
+    brainDialog.showModal();
     return;
   }
   const btn = e.target.closest('.circuit');
   if (!btn) return;
   selected = Number(btn.dataset.id);
   renderCircuits();
+});
+
+$('brain-body').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-verify]');
+  if (btn) verifyBrainOnChain(Number(btn.dataset.verify));
 });
 
 function show(section) {
@@ -228,7 +222,14 @@ function setActions(buttons) {
     b.addEventListener('click', onClick, { once: true });
     box.appendChild(b);
   }
-  box.querySelector('button')?.focus();
+  // 切换语言重画时不抢焦点，焦点留在语言按钮上
+  if (!rerendering) box.querySelector('button')?.focus();
+}
+
+function renderGameHeader() {
+  $('era-name').textContent = matchStarted ? (era.hidden ? eraText('unknown').name : eraText(era.era.id).name) : '';
+  $('round-label').textContent = t('game.round', { round: roundNo, total: era ? eraConfig(era.era).rounds : 10 });
+  $('my-label').textContent = t('game.me', { brain: brainLabel(selected) });
 }
 
 $('btn-start').addEventListener('click', () => {
@@ -236,75 +237,91 @@ $('btn-start').addEventListener('click', () => {
   seed = randomSeed();
   aiCircuit = pickCircuit();
   commitTx = null;
+  verifyState = null;
   const config = eraConfig(era.era);
   commitSecret = { seed, salt: randomSalt(), eraId: era.era.id, aiCircuit, rounds: config.rounds, interferenceRate: config.interferenceRate };
   if ($('opt-commit').checked) commitThenStart();
   else startMatch();
 });
 
+// 钱包操作进行中的提示：状态键名 + 交易哈希
+const statusView = (key, hash) => () => {
+  $('prompt').innerHTML = `${t(`status.${key}`, { fee: READ_FEE_LABEL })}…${hash ? `<br>${txLink(hash)}` : ''}`;
+};
+
 // 开局前先把承诺写上链，确认后再开打。失败时可以重试，也可以不上链直接开始。
 async function commitThenStart() {
+  matchStarted = false;
+  roundNo = 1;
+  logRows = [];
+  renderLog();
+  renderGameHeader();
   show('game');
-  $('log-body').innerHTML = '';
-  $('era-name').textContent = '';
   setActions([]);
   try {
     commitTx = await wallet.commitMatch({
       data: commitCalldata(computeCommitment(commitSecret)),
-      onStatus: (msg, hash) => {
-        $('prompt').innerHTML = `${msg}…${hash ? `<br><a href="${txUrl(hash)}" target="_blank" rel="noopener noreferrer">在 OKLink 查看交易</a>` : ''}`;
+      onStatus: (key, hash) => {
+        setView(statusView(key, hash));
         updateWalletStatus();
       },
     });
-    startMatch();
   } catch (err) {
     updateWalletStatus();
-    $('prompt').innerHTML = `<span class="attack">开局承诺没有完成：${friendlyWalletError(err)}</span>`;
-    setActions([
-      { label: '重试上链', cls: 'primary', onClick: commitThenStart },
-      { label: '不上链，直接开始', onClick: startMatch },
-    ]);
+    setView(() => {
+      $('prompt').innerHTML = `<span class="attack">${t('err.commit', { reason: errorText(err) })}</span>`;
+      setActions([
+        { label: t('btn.retryCommit'), cls: 'primary', onClick: commitThenStart },
+        { label: t('btn.skipCommit'), onClick: startMatch },
+      ]);
+    });
+    return;
   }
+  startMatch();
 }
 
 function startMatch() {
   const config = eraConfig(era.era);
-  const rounds = config.rounds;
   aiPolicy = createReadPolicy();
-  evaluator = EVALUATORS[document.querySelector('input[name="evaluator"]:checked')?.value ?? 'chain']();
+  evaluatorKind = document.querySelector('input[name="evaluator"]:checked')?.value ?? 'chain';
+  evaluator = EVALUATORS[evaluatorKind]();
   payToRead = $('opt-pay').checked;
   readTxs = {};
+  logRows = [];
+  roundNo = 1;
+  matchStarted = true;
   updateEvaluatorStatus();
   // 玩家是 A，电脑是 B
   match = createMatch({ circuits: { A: selected, B: aiCircuit }, evaluator, seed, config });
-  $('my-circuit').textContent = `#${selected} ${getCircuit(selected).name}`;
-  $('round-total').textContent = rounds;
-  $('round-no').textContent = '1';
-  $('era-name').textContent = era.hidden ? '未知纪元' : era.era.name;
+  renderGameHeader();
   starfield.setMode(era.hidden ? 'chaotic' : era.era.id);
   destroyedAtStart = starfield.destroyed;
   $('my-score').textContent = '0';
   $('ai-score').textContent = '0';
-  $('log-body').innerHTML = '';
+  renderLog();
   show('game');
   nextRound();
 }
 
 function updateEvaluatorStatus() {
-  const calls = typeof evaluator?.calls === 'number' ? ` · 本局链上调用 ${evaluator.calls} 次` : '';
-  $('evaluator-name').textContent = (evaluator ?? EVALUATORS.chain()).name + calls;
+  const calls = typeof evaluator?.calls === 'number' ? t('evaluator.calls', { n: evaluator.calls }) : '';
+  $('evaluator-name').textContent = t(`evaluator.${evaluatorKind}`) + calls;
 }
 
 // 链上调用要等网络：期间显示提示；失败时给出重试按钮。
 // 引擎在 eval 全部成功后才推进状态，所以重试同一步是安全的。
-async function runStep(label, fn) {
+async function runStep(labelKey, fn) {
   setActions([]);
-  $('prompt').innerHTML = `${label}…`;
+  setView(() => {
+    $('prompt').innerHTML = `${t(labelKey)}…`;
+  });
   try {
     return await fn();
   } catch (err) {
-    $('prompt').innerHTML = `<span class="attack">${err.message}</span><br>可以重试；如果 RPC 一直不可用，可在开局时改用本地模拟。`;
-    setActions([{ label: '重试', cls: 'primary', onClick: () => runStep(label, fn) }]);
+    setView(() => {
+      $('prompt').innerHTML = `<span class="attack">${t('err.step', { reason: errorText(err) })}</span>`;
+      setActions([{ label: t('btn.retry'), cls: 'primary', onClick: () => runStep(labelKey, fn) }]);
+    });
     return undefined;
   } finally {
     updateEvaluatorStatus();
@@ -312,36 +329,40 @@ async function runStep(label, fn) {
 }
 
 function nextRound() {
-  return runStep('大脑电路计算中', async () => renderRound(await match.startRound()));
+  return runStep('step.compute', async () => renderRound(await match.startRound()));
 }
 
 function renderRound({ round, observed, self }) {
-  $('round-no').textContent = round;
+  roundNo = round;
+  renderGameHeader();
   const canRead = match.config.allowRead;
+  // 电脑是否读心在这里决定一次；下面的显示函数可以因切换语言重复调用，不能再问 AI。
   const aiReads = canRead && aiPolicy.shouldRead(observed.A);
-  let base = `本轮你的大脑输出：${actionText(observed.A)}，对方：${actionText(observed.B)}。`;
-  // 只看自己的 self.A，对方是否被干扰要到赛后才公开。
-  if (self.A.interfered) {
-    base +=
-      self.A.intended === observed.A
-        ? `<br><span class="hit">你的大脑被智子操控了</span>，不过你本来也会${actionText(observed.A)}，这次干扰没有改变什么。`
-        : `<br><span class="hit">你的大脑被智子操控了！</span>你本想${actionText(self.A.intended)}，却打出了一次打击。对方会不会读心发现你是被冤枉的？`;
-  }
-
-  if (observed.B === ATTACK && !canRead) {
-    $('prompt').innerHTML = `${base}<br>你被打击了。三日凌空，读心失效，只能忍下。`;
-    setActions([{ label: '忍下', cls: 'primary', onClick: () => resolve({ A: false, B: false }) }]);
-  } else if (observed.B === ATTACK) {
-    const fee = payToRead ? `，并用钱包在 X Layer 上烧掉 ${READ_FEE_LABEL}（不退还）` : '';
-    $('prompt').innerHTML = `${base}<br>你被打击了。是智子干扰，还是对方本性如此？读心需要 1 分（若是干扰则退还）${fee}。`;
-    setActions([
-      { label: payToRead ? `读心（1 分 + ${READ_FEE_LABEL}）` : '读心（1 分）', cls: 'primary', onClick: () => readMind(round, aiReads) },
-      { label: '忍下', onClick: () => resolve({ A: false, B: aiReads }) },
-    ]);
-  } else {
-    $('prompt').innerHTML = base;
-    setActions([{ label: '结算本轮', cls: 'primary', onClick: () => resolve({ A: false, B: aiReads }) }]);
-  }
+  setView(() => {
+    let base = t('round.outputs', { me: actionText(observed.A), opp: actionText(observed.B) });
+    // 只看自己的 self.A，对方是否被干扰要到赛后才公开。
+    if (self.A.interfered) {
+      base +=
+        '<br>' +
+        (self.A.intended === observed.A
+          ? t('round.interferedSame', { action: actionText(observed.A) })
+          : t('round.interfered', { intended: actionText(self.A.intended) }));
+    }
+    if (observed.B === ATTACK && !canRead) {
+      $('prompt').innerHTML = `${base}<br>${t('round.noRead')}`;
+      setActions([{ label: t('btn.hold'), cls: 'primary', onClick: () => resolve({ A: false, B: false }) }]);
+    } else if (observed.B === ATTACK) {
+      const fee = payToRead ? t('round.fee', { fee: READ_FEE_LABEL }) : '';
+      $('prompt').innerHTML = `${base}<br>${t('round.struck', { fee })}`;
+      setActions([
+        { label: payToRead ? t('btn.readPaid', { fee: READ_FEE_LABEL }) : t('btn.read'), cls: 'primary', onClick: () => readMind(round, aiReads) },
+        { label: t('btn.hold'), onClick: () => resolve({ A: false, B: aiReads }) },
+      ]);
+    } else {
+      $('prompt').innerHTML = base;
+      setActions([{ label: t('btn.settle'), cls: 'primary', onClick: () => resolve({ A: false, B: aiReads }) }]);
+    }
+  });
 }
 
 // 玩家读心：需要付费时，先在钱包里签名一笔交易并等它确认，再在链上 eval 读心。
@@ -353,82 +374,90 @@ async function readMind(round, aiReads) {
       readTxs[round] = await wallet.payForRead({
         seed,
         round,
-        onStatus: (msg, hash) => {
-          $('prompt').innerHTML = `${msg}…${hash ? `<br><a href="${txUrl(hash)}" target="_blank" rel="noopener noreferrer">在 OKLink 查看交易</a>` : ''}`;
+        onStatus: (key, hash) => {
+          setView(statusView(key, hash));
           updateWalletStatus();
         },
       });
     } catch (err) {
       updateWalletStatus();
-      $('prompt').innerHTML = `<span class="attack">读心付费没有完成：${friendlyWalletError(err)}</span>`;
-      setActions([
-        { label: '重试读心', cls: 'primary', onClick: () => readMind(round, aiReads) },
-        { label: '忍下', onClick: () => resolve({ A: false, B: aiReads }) },
-      ]);
+      setView(() => {
+        $('prompt').innerHTML = `<span class="attack">${t('err.pay', { reason: errorText(err) })}</span>`;
+        setActions([
+          { label: t('btn.retryRead'), cls: 'primary', onClick: () => readMind(round, aiReads) },
+          { label: t('btn.hold'), onClick: () => resolve({ A: false, B: aiReads }) },
+        ]);
+      });
       return;
     }
   }
   return resolve({ A: true, B: aiReads });
 }
 
-function updateWalletStatus() {
-  const el = $('wallet-status');
-  if (!wallet.available) el.textContent = '未检测到钱包插件，可以先不付费试玩';
-  else if (wallet.account) el.textContent = `已连接 ${wallet.account.slice(0, 6)}…${wallet.account.slice(-4)}`;
-  else el.textContent = '第一次读心时连接钱包';
-}
-
 function resolve(reads) {
-  const label = reads.A ? '读心中：正在链上重新计算对方的大脑' : '结算中';
-  return runStep(label, async () => renderResolve(await match.resolveRound(reads)));
+  return runStep(reads.A ? 'step.read' : 'step.resolve', async () => renderResolve(await match.resolveRound(reads)));
 }
 
 function renderResolve(r) {
   aiPolicy.learn(r.readResult.B);
-
-  const notes = [];
-  if (r.readResult.A === 'interference') notes.push('<span class="hit">你识破了智子干扰</span>，对方本轮改回交流，读心费退还');
-  if (r.readResult.A === 'genuine') notes.push('读心结果：对方是真心打击，扣 1 分');
-  if (r.readResult.B === 'interference') notes.push('对方读了你的心，发现你被智子干扰，你本轮改回真实动作');
-  if (r.readResult.B === 'genuine') notes.push('对方读了你的心，确认你是真心打击');
-
-  const tx = readTxs[r.round] ? ` <a href="${txUrl(readTxs[r.round])}" target="_blank" rel="noopener noreferrer" title="读心交易">交易</a>` : '';
-  const readCell = [r.readResult.A && `我→${r.readResult.A === 'interference' ? '识破干扰' : '真打击'}${tx}`, r.readResult.B && `对方→${r.readResult.B === 'interference' ? '识破干扰' : '真打击'}`]
-    .filter(Boolean)
-    .join('<br>') || '—';
-  $('log-body').insertAdjacentHTML(
-    'beforeend',
-    `<tr><td>${r.round}</td><td>${actionText(r.finalAction.A)}</td><td>${actionText(r.finalAction.B)}</td><td>${readCell}</td><td>${r.score.A} : ${r.score.B}</td></tr>`,
-  );
+  logRows.push(r);
+  renderLog();
   $('my-score').textContent = r.totals.A;
   $('ai-score').textContent = r.totals.B;
-  $('prompt').innerHTML = `本轮结算：最终 我 ${actionText(r.finalAction.A)} / 对方 ${actionText(r.finalAction.B)}，得分 ${r.score.A} : ${r.score.B}。${notes.length ? '<br>' + notes.join('<br>') : ''}`;
+  setView(() => {
+    const notes = [];
+    if (r.readResult.A === 'interference') notes.push(t('resolve.caught'));
+    if (r.readResult.A === 'genuine') notes.push(t('resolve.genuine'));
+    if (r.readResult.B === 'interference') notes.push(t('resolve.oppCaught'));
+    if (r.readResult.B === 'genuine') notes.push(t('resolve.oppGenuine'));
+    const summary = t('resolve.summary', { me: actionText(r.finalAction.A), opp: actionText(r.finalAction.B), a: r.score.A, b: r.score.B });
+    $('prompt').innerHTML = `${summary}${notes.length ? '<br>' + notes.join('<br>') : ''}`;
+    if (match.isOver) setActions([{ label: t('btn.result'), cls: 'primary', onClick: showResult }]);
+    else setActions([{ label: t('btn.next'), cls: 'primary', onClick: nextRound }]);
+  });
+}
 
-  if (match.isOver) setActions([{ label: '查看结果', cls: 'primary', onClick: showResult }]);
-  else setActions([{ label: '下一轮', cls: 'primary', onClick: nextRound }]);
+function renderLog() {
+  const readWord = (res) => t(res === 'interference' ? 'log.interference' : 'log.genuine');
+  $('log-body').innerHTML = logRows
+    .map((r) => {
+      const tx = readTxs[r.round] ? ` <a href="${txUrl(readTxs[r.round])}" target="_blank" rel="noopener noreferrer" title="${t('log.tx.title')}">${t('log.tx')}</a>` : '';
+      const readCell =
+        [r.readResult.A && t('log.readMe', { result: readWord(r.readResult.A) }) + tx, r.readResult.B && t('log.readOpp', { result: readWord(r.readResult.B) })]
+          .filter(Boolean)
+          .join('<br>') || '—';
+      return `<tr><td>${r.round}</td><td>${actionText(r.finalAction.A)}</td><td>${actionText(r.finalAction.B)}</td><td>${readCell}</td><td>${r.score.A} : ${r.score.B}</td></tr>`;
+    })
+    .join('');
 }
 
 function showResult() {
-  const { plan, history } = match.reveal();
-  const { A, B } = match.totals;
-  const verdict = A > B ? '你的文明存活了下来。' : A < B ? '你的文明被压制了。' : '两个文明势均力敌。';
-  const ai = getCircuit(aiCircuit);
-  // 结局：对比分数说明地球任务成败，再说这场对局里三体星球文明毁灭了几次。
-  const destroyed = starfield.destroyed - destroyedAtStart;
-  const fate = A > B ? '你凯旋而归，地球文明在三体星球站稳了脚跟。' : A < B ? '拯救地球失败：殖民舰队被压制，地球人没能等到你的捷报。' : '势均力敌：殖民计划陷入僵局，地球还在等待。';
-  const sky = destroyed > 0 ? `这场相遇中，三体星球在三颗太阳的引力下毁灭了 ${destroyed} 次。` : '这场相遇中，三体星球文明安然无恙。';
-  $('result-fate').className = A < B ? 'fate lost' : 'fate';
-  $('result-fate').innerHTML = `${fate}<small>${sky}</small>`;
+  // 毁灭次数在结算这一刻定下来，之后背景继续运行也不影响本局结果
+  destroyedThisMatch = starfield.destroyed - destroyedAtStart;
   if (era.hidden) starfield.setMode(era.era.id);
-  const eraLine = era.hidden ? `本局其实是 <strong>${era.era.name}</strong>（干扰率 ${Math.round(era.era.interferenceRate * 100)}%）。<br>` : '';
-  $('result-summary').innerHTML = `最终比分 ${A} : ${B}。${verdict}<br>${eraLine}对方出战的大脑是 <strong>#${ai.id} ${ai.name}</strong>（${ai.gate}）：${ai.desc}。`;
-  $('reveal-body').innerHTML = history
-    .map((r, i) => `<tr><td>${r.round}</td><td>${plan[i].A ? '<span class="hit">是</span>' : '否'}</td><td>${plan[i].B ? '<span class="hit">是</span>' : '否'}</td><td>${actionText(r.finalAction.A)} : ${actionText(r.finalAction.B)}</td></tr>`)
-    .join('');
-  $('seed').textContent = seed;
+  view = null;
+  renderResult();
   renderCommitBox();
   show('result');
   $('btn-again').focus();
+}
+
+function renderResult() {
+  const { plan, history } = match.reveal();
+  const { A, B } = match.totals;
+  const outcome = A > B ? 'win' : A < B ? 'lose' : 'draw';
+  const ai = circuitText(aiCircuit);
+  // 结局：对比分数说明地球任务成败，再说这场对局里三体星球文明毁灭了几次。
+  const sky = destroyedThisMatch > 0 ? t('sky.destroyed', { n: destroyedThisMatch }) : t('sky.safe');
+  $('result-fate').className = outcome === 'lose' ? 'fate lost' : 'fate';
+  $('result-fate').innerHTML = `${t(`fate.${outcome}`)}<small>${sky}</small>`;
+  const eraLine = era.hidden ? t('result.era', { era: eraText(era.era.id).name, rate: Math.round(era.era.interferenceRate * 100) }) : '';
+  $('result-summary').innerHTML = t('result.summary', { a: A, b: B, verdict: t(`verdict.${outcome}`), era: eraLine, brain: brainLabel(ai.id), gate: ai.gate, desc: ai.desc });
+  const yes = `<span class="hit">${t('reveal.yes')}</span>`;
+  $('reveal-body').innerHTML = history
+    .map((r, i) => `<tr><td>${r.round}</td><td>${plan[i].A ? yes : t('reveal.no')}</td><td>${plan[i].B ? yes : t('reveal.no')}</td><td>${actionText(r.finalAction.A)} : ${actionText(r.finalAction.B)}</td></tr>`)
+    .join('');
+  $('seed').textContent = seed;
 }
 
 function renderCommitBox() {
@@ -438,33 +467,50 @@ function renderCommitBox() {
   $('commit-tx').textContent = commitTx;
   $('commit-hash').textContent = computeCommitment(commitSecret);
   $('commit-preimage').textContent = commitmentPreimage(commitSecret);
-  $('commit-verdict').textContent = '';
-  $('btn-verify-commit').disabled = false;
+  renderVerdict();
+}
+
+function renderVerdict() {
+  const el = $('commit-verdict');
+  $('btn-verify-commit').disabled = Boolean(verifyState?.loading);
+  if (!verifyState) el.textContent = '';
+  else if (verifyState.loading) el.textContent = t('commit.reading');
+  else if (verifyState.error) el.innerHTML = `<span class="attack">${errorText(verifyState.error)}</span>`;
+  else {
+    const { tx, result: r } = verifyState;
+    const mark = (ok) => (ok ? '✓' : '✗');
+    const ok = r.ok && tx.success;
+    el.innerHTML = [
+      `${mark(tx.success)} ${t('commit.block', { block: tx.blockNumber })}`,
+      `${mark(r.commitmentOk)} ${t('commit.hashOk')}`,
+      `${mark(r.planOk)} ${t('commit.planOk')}`,
+      `<strong class="${ok ? 'coop' : 'attack'}">${t(ok ? 'commit.pass' : 'commit.fail')}</strong>`,
+    ].join('<br>');
+  }
 }
 
 // 赛后验证：用公共 RPC 读回开局交易，比对哈希，并用 seed 重放干扰计划。不需要钱包。
 $('btn-verify-commit').addEventListener('click', async () => {
-  const btn = $('btn-verify-commit');
-  btn.disabled = true;
-  $('commit-verdict').textContent = '正在读取链上交易…';
+  verifyState = { loading: true };
+  renderVerdict();
   try {
     const tx = await readTransaction(commitTx);
-    const onChain = parseCommitCalldata(tx.data);
-    const r = verifyMatch({ onChainCommitment: onChain, secret: commitSecret, playedPlan: match.reveal().plan });
-    const checks = [
-      `${tx.success ? '✓' : '✗'} 交易已在 X Layer 第 ${tx.blockNumber} 个区块确认`,
-      `${r.commitmentOk ? '✓' : '✗'} 链上承诺与公开原文的 keccak256 哈希一致`,
-      `${r.planOk ? '✓' : '✗'} 用公开的 seed 重放出的干扰计划与本局完全一致`,
-    ];
-    $('commit-verdict').innerHTML = `${checks.join('<br>')}<br><strong class="${r.ok && tx.success ? 'coop' : 'attack'}">${r.ok && tx.success ? '验证通过：本局规则在开局前已上链，对局中没有被改过。' : '验证未通过。'}</strong>`;
+    const result = verifyMatch({ onChainCommitment: parseCommitCalldata(tx.data), secret: commitSecret, playedPlan: match.reveal().plan });
+    verifyState = { tx, result };
   } catch (err) {
-    $('commit-verdict').innerHTML = `<span class="attack">${err.message}</span>`;
-  } finally {
-    btn.disabled = false;
+    verifyState = { error: err };
   }
+  renderVerdict();
 });
 
 $('btn-again').addEventListener('click', () => show('setup'));
+
+function updateWalletStatus() {
+  const el = $('wallet-status');
+  if (!wallet.available) el.textContent = t('wallet.none');
+  else if (wallet.account) el.textContent = t('wallet.connected', { addr: `${wallet.account.slice(0, 6)}…${wallet.account.slice(-4)}` });
+  else el.textContent = t('wallet.idle');
+}
 
 // 弹窗：Esc、关闭按钮或点背景都能关闭。
 function setupDialog(dialog) {
@@ -482,12 +528,48 @@ function setupDialog(dialog) {
 const rules = setupDialog($('rules'));
 $('btn-rules').addEventListener('click', () => rules.showModal());
 const brainDialog = setupDialog($('brain-info'));
+brainDialog.addEventListener('close', () => {
+  openDialog = null;
+});
 
+function renderFooter() {
+  $('footer-version').textContent = t('footer.version', { version: VERSION });
+  $('footer-x').textContent = t('footer.x', { handle: X_HANDLE });
+}
+
+// 中英文切换：静态文案由 i18n.js 套用，动态内容在这里重画。
+$('btn-lang').addEventListener('click', () => setLang(getLang() === 'zh' ? 'en' : 'zh'));
+onLangChange(() => {
+  rerendering = true;
+  try {
+    renderCircuits();
+    renderEras();
+    renderFooter();
+    updateEvaluatorStatus();
+    updateWalletStatus();
+    renderOpenDialog();
+    if (era) renderGameHeader();
+    renderLog();
+    if (!$('game').hidden) view?.();
+    if (!$('result').hidden) {
+      renderResult();
+      renderCommitBox();
+    }
+  } finally {
+    rerendering = false;
+  }
+});
+
+applyStatic();
+renderFooter();
 renderEras();
 updateEvaluatorStatus();
 // 没检测到钱包时默认不勾选，玩家仍可以不付费试玩；钱包晚注入时刷新一下状态。
 $('burn-addr').textContent = BURN_ADDRESS;
-if (!wallet.available) $('opt-pay').checked = false;
+if (!wallet.available) {
+  $('opt-pay').checked = false;
+  $('opt-commit').checked = false;
+}
 updateWalletStatus();
 window.addEventListener('load', updateWalletStatus);
 $('contract-addr').textContent = TAPEOUT.circuits;

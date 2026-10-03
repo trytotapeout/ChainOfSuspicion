@@ -16,6 +16,11 @@ export const XLAYER = {
 };
 export const txUrl = (hash) => `https://www.oklink.com/zh-hans/x-layer/evm/tx/${hash}`;
 
+// 报错带上稳定的 i18n 键名和参数，界面按当前语言翻译；message 保留中文，方便日志和测试。
+function walletError(key, message, params = {}) {
+  return Object.assign(new Error(message), { i18n: { key, params } });
+}
+
 const RECEIPT_TIMEOUT_MS = 90000;
 const RECEIPT_POLL_MS = 1500;
 
@@ -43,13 +48,14 @@ export async function readTransaction(hash, { fetchImpl, rpcs = XLAYER.rpcUrls.c
         return json.result;
       };
       const [tx, receipt] = [await call('eth_getTransactionByHash'), await call('eth_getTransactionReceipt')];
-      if (!tx) throw new Error('链上查不到这笔交易');
+      if (!tx) throw walletError('txNotFound', '链上查不到这笔交易');
       return { from: tx.from, to: tx.to, data: tx.input, blockNumber: receipt ? parseInt(receipt.blockNumber, 16) : null, success: receipt?.status === '0x1' };
     } catch (err) {
       lastError = err;
     }
   }
-  throw new Error(`读取链上交易失败：${lastError?.message ?? lastError}`);
+  const detail = lastError?.message ?? String(lastError);
+  throw walletError('readTx', `读取链上交易失败：${detail}`, { detail });
 }
 
 export function friendlyWalletError(err) {
@@ -66,13 +72,13 @@ export function createWallet({ provider, getProvider = () => provider, sleep = (
 
   const request = (method, params) => {
     const p = getProvider();
-    if (!p) throw new Error('没有检测到钱包插件，请安装 OKX Wallet 或其他 EVM 钱包');
+    if (!p) throw walletError('noProvider', '没有检测到钱包插件，请安装 OKX Wallet 或其他 EVM 钱包');
     return p.request({ method, params });
   };
 
   async function connect() {
     const accounts = await request('eth_requestAccounts');
-    if (!accounts?.length) throw new Error('钱包没有返回账户');
+    if (!accounts?.length) throw walletError('noAccount', '钱包没有返回账户');
     account = accounts[0];
     return account;
   }
@@ -94,12 +100,12 @@ export function createWallet({ provider, getProvider = () => provider, sleep = (
     while (now() < deadline) {
       const receipt = await request('eth_getTransactionReceipt', [hash]);
       if (receipt) {
-        if (receipt.status !== '0x1') throw new Error(`读心交易执行失败：${hash}`);
+        if (receipt.status !== '0x1') throw walletError('txFailed', `交易执行失败：${hash}`, { hash });
         return receipt;
       }
       await sleep(RECEIPT_POLL_MS);
     }
-    throw new Error(`读心交易还没确认，请稍后重试（不会重复付款）：${hash}`);
+    throw walletError('txTimeout', `交易还没确认，请稍后重试（不会重复付款）：${hash}`, { hash });
   }
 
   // 开局承诺：玩家钱包发给自己一笔 0 OKB 的交易，data 里是承诺哈希。只花 Gas。
@@ -108,38 +114,39 @@ export function createWallet({ provider, getProvider = () => provider, sleep = (
     let hash = paid.get(data);
     if (!hash) {
       if (!account) {
-        onStatus('连接钱包');
+        onStatus('connect');
         await connect();
       }
-      onStatus('切换到 X Layer');
+      onStatus('switch');
       await ensureXLayer();
-      onStatus('请在钱包中确认开局承诺交易（0 OKB，只花 Gas）');
+      onStatus('confirmCommit');
       hash = await request('eth_sendTransaction', [{ from: account, to: account, value: '0x0', data }]);
       paid.set(data, hash);
     }
-    onStatus('等待开局承诺在 X Layer 上确认', hash);
+    onStatus('waitCommit', hash);
     await waitForReceipt(hash);
     return hash;
   }
 
-  // 为某局某轮的读心付费，返回交易哈希。onStatus 用来更新界面提示。
+  // 为某局某轮的读心付费，返回交易哈希。onStatus(状态键名, 交易哈希) 用来更新界面提示，
+  // 状态键名：connect / switch / confirmRead / waitRead（开局承诺是 confirmCommit / waitCommit）。
   async function payForRead({ seed, round, onStatus = () => {} }) {
     const key = `${seed}:${round}`;
     let hash = paid.get(key);
     if (!hash) {
       if (!account) {
-        onStatus('连接钱包');
+        onStatus('connect');
         await connect();
       }
-      onStatus('切换到 X Layer');
+      onStatus('switch');
       await ensureXLayer();
-      onStatus(`请在钱包中确认读心交易（${READ_FEE_LABEL}）`);
+      onStatus('confirmRead');
       hash = await request('eth_sendTransaction', [
         { from: account, to: BURN_ADDRESS, value: '0x' + READ_FEE_WEI.toString(16), data: readMemo(seed, round) },
       ]);
       paid.set(key, hash);
     }
-    onStatus('等待读心交易在 X Layer 上确认', hash);
+    onStatus('waitRead', hash);
     await waitForReceipt(hash);
     return hash;
   }

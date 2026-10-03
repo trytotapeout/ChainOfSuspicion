@@ -95,6 +95,8 @@ npm run simulate       # 批量模拟各大脑两两对战的平均得分，用�
 
 `npm run simulate` 可以带参数：`npm run simulate -- 干扰率 轮数 局数`，例如 `npm run simulate -- 0.4 10 2000`。
 
+页面右上角可以切换中文 / English，选择会记在浏览器里；第一次打开时按浏览器语言决定。页面底部显示版本号。
+
 本地服务器只监听 `127.0.0.1`，没有鉴权，只用于本地开发和试玩。
 
 开局可以选“本地模拟（离线）”，这时电路由代码模拟，不访问网络，适合断网时开发。
@@ -108,6 +110,7 @@ src/
   eras.js              纪元参数
   ai.js                电脑对手：选大脑、决定是否读心
   wallet.js            钱包：连接、切换 X Layer、读心烧币交易、开局承诺交易、读取链上交易
+  version.js           版本号（和 package.json 一致）
   rng.js               可复现的伪随机数（同一个 seed 生成同一份干扰计划）
   commit.js            开局承诺：生成承诺原文和哈希、编码交易 data、赛后验证
   keccak.js            keccak256 的纯 JS 实现（无依赖）
@@ -116,6 +119,8 @@ src/
     tapeout.js         链上 evaluator：调用 X Layer 上的 eval
     local.js           本地 evaluator：用代码模拟 4 个电路
 web/                   浏览器界面（原生 HTML / CSS / JS 模块）
+  i18n.js              中英文切换：当前语言、翻译函数、静态文案套用
+  i18n/                界面文案（zh.js、en.js 键名一一对应）、大脑和纪元的英文、设计指南
   starfield.js         背景：三体星系实时引力模拟的 Canvas 渲染，随纪元切换
 scripts/               本地服务器、批量模拟、链上核对
 test/                  单元测试（node:test）

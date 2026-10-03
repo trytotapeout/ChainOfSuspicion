@@ -11,75 +11,79 @@
   <main>
     <header>
       <div class="title-row">
-        <h1>猜疑链</h1>
-        <button id="btn-rules" type="button" aria-haspopup="dialog" aria-controls="rules">帮助 / 规则</button>
+        <h1 data-i18n="app.title">猜疑链</h1>
+        <div class="head-actions">
+          <button id="btn-lang" type="button" data-i18n="btn.lang" data-i18n-aria="btn.lang.aria">EN</button>
+          <button id="btn-rules" type="button" aria-haspopup="dialog" aria-controls="rules" data-i18n="btn.rules">帮助 / 规则</button>
+        </div>
       </div>
-      <p class="sub">地球环境日益恶化，人类决定派你乘坐马斯克的星舰去殖民三体星球。三体人不会撒谎，思考透明，他们依靠电磁波交流。地球文明给你的大脑注入了类似功能的读心术，你可以适当地消耗 OKB 使用该技能。要注意的是，如果三体大脑打击了你，也可能是智子在作祟，你需要有所策略。地球人期待你凯旋而归。</p>
-      <p class="evaluator">电路计算：<span id="evaluator-name"></span></p>
-      <p class="evaluator">电路合约（X Layer）：<a id="contract-link" href="#" target="_blank" rel="noopener noreferrer"><code id="contract-addr"></code></a></p>
+      <p class="sub" data-i18n="intro">地球环境日益恶化，人类决定派你乘坐马斯克的星舰去殖民三体星球。三体人不会撒谎，思考透明，他们依靠电磁波交流。地球文明给你的大脑注入了类似功能的读心术，你可以适当地消耗 OKB 使用该技能。要注意的是，如果三体大脑打击了你，也可能是智子在作祟，你需要有所策略。地球人期待你凯旋而归。</p>
+      <p class="evaluator"><span data-i18n="header.evaluator">电路计算：</span><span id="evaluator-name"></span></p>
+      <p class="evaluator"><span data-i18n="header.contract">电路合约（X Layer）：</span><a id="contract-link" href="#" target="_blank" rel="noopener noreferrer"><code id="contract-addr"></code></a></p>
     </header>
 
     <section id="setup" aria-labelledby="setup-title">
-      <h2 id="setup-title">选择大脑</h2>
-      <div id="circuit-list" class="circuits" role="radiogroup" aria-label="出战电路"></div>
-      <h2 id="era-title">选择纪元</h2>
+      <h2 id="setup-title" data-i18n="setup.brain">选择大脑</h2>
+      <div id="circuit-list" class="circuits" role="radiogroup" aria-label="出战电路" data-i18n-aria="setup.brain.aria"></div>
+      <h2 id="era-title" data-i18n="setup.era">选择纪元</h2>
       <div id="era-list" class="circuits eras" role="radiogroup" aria-labelledby="era-title"></div>
       <div class="options">
         <fieldset class="evaluator-pick">
-          <legend>电路计算</legend>
-          <label><input type="radio" name="evaluator" value="chain" checked /> X Layer 链上电路</label>
-          <label><input type="radio" name="evaluator" value="local" /> 本地模拟（离线）</label>
+          <legend data-i18n="setup.evaluator">电路计算</legend>
+          <label><input type="radio" name="evaluator" value="chain" checked /> <span data-i18n="setup.evaluator.chain">X Layer 链上电路</span></label>
+          <label><input type="radio" name="evaluator" value="local" /> <span data-i18n="setup.evaluator.local">本地模拟（离线）</span></label>
         </fieldset>
-        <label class="pay-pick"><input id="opt-commit" type="checkbox" checked /> <span>开局把本局规则（干扰计划、真实纪元、对手大脑）的哈希承诺写上 X Layer（0 OKB，只花 Gas）</span></label>
-        <label class="pay-pick"><input id="opt-pay" type="checkbox" checked /> <span>读心时用钱包在 X Layer 上烧 0.0001 OKB 到 <code id="burn-addr"></code></span></label>
+        <label class="pay-pick"><input id="opt-commit" type="checkbox" checked /> <span data-i18n="setup.commit">开局把本局规则（干扰计划、真实纪元、对手大脑）的哈希承诺写上 X Layer（0 OKB，只花 Gas）</span></label>
+        <label class="pay-pick"><input id="opt-pay" type="checkbox" checked /> <span><span data-i18n="setup.pay">读心时用钱包在 X Layer 上烧 0.0001 OKB 到</span> <code id="burn-addr"></code></span></label>
         <span id="wallet-status" class="hint-inline"></span>
       </div>
-      <button id="btn-start" type="button" class="primary">立刻出战</button>
-      <p class="hint">第一次玩？点右上角的“帮助 / 规则”。</p>
+      <button id="btn-start" type="button" class="primary" data-i18n="setup.start">立刻出战</button>
+      <p class="hint" data-i18n="setup.hint">第一次玩？点右上角的“帮助 / 规则”。</p>
     </section>
 
     <section id="game" hidden aria-labelledby="game-title">
-      <h2 id="game-title"><span id="era-name" class="era-tag"></span> 第 <span id="round-no">1</span> / <span id="round-total">10</span> 轮</h2>
+      <h2 id="game-title"><span id="era-name" class="era-tag"></span> <span id="round-label"></span></h2>
       <div class="scoreboard">
-        <div><span class="label">我方（<span id="my-circuit"></span>）</span><span id="my-score" class="score">0</span></div>
-        <div><span class="label">对方（未知）</span><span id="ai-score" class="score">0</span></div>
+        <div><span class="label" id="my-label"></span><span id="my-score" class="score">0</span></div>
+        <div><span class="label" data-i18n="game.opponent">对方（未知）</span><span id="ai-score" class="score">0</span></div>
       </div>
       <div id="prompt" class="prompt" aria-live="polite"></div>
       <div id="actions" class="actions"></div>
       <table class="log">
-        <caption>对局记录</caption>
-        <thead><tr><th scope="col">轮</th><th scope="col">我方</th><th scope="col">对方</th><th scope="col">读心</th><th scope="col">本轮得分</th></tr></thead>
+        <caption data-i18n="log.caption">对局记录</caption>
+        <thead><tr><th scope="col" data-i18n="log.round">轮</th><th scope="col" data-i18n="log.me">我方</th><th scope="col" data-i18n="log.opponent">对方</th><th scope="col" data-i18n="log.read">读心</th><th scope="col" data-i18n="log.score">本轮得分</th></tr></thead>
         <tbody id="log-body"></tbody>
       </table>
     </section>
 
     <section id="result" hidden aria-labelledby="result-title">
-      <h2 id="result-title">相遇结束</h2>
+      <h2 id="result-title" data-i18n="result.title">相遇结束</h2>
       <p id="result-fate" class="fate"></p>
       <p id="result-summary" class="prompt"></p>
       <table class="log">
-        <caption>赛后公开：干扰计划</caption>
-        <thead><tr><th scope="col">轮</th><th scope="col">我方被干扰</th><th scope="col">对方被干扰</th><th scope="col">最终动作（我 : 对方）</th></tr></thead>
+        <caption data-i18n="reveal.caption">赛后公开：干扰计划</caption>
+        <thead><tr><th scope="col" data-i18n="log.round">轮</th><th scope="col" data-i18n="reveal.me">我方被干扰</th><th scope="col" data-i18n="reveal.opp">对方被干扰</th><th scope="col" data-i18n="reveal.final">最终动作（我 : 对方）</th></tr></thead>
         <tbody id="reveal-body"></tbody>
       </table>
-      <p class="seed">本局 seed：<code id="seed"></code>（同一个 seed 可重放出同一份干扰计划）</p>
+      <p class="seed"><span data-i18n="result.seed">本局 seed：</span><code id="seed"></code><span data-i18n="result.seedNote">（同一个 seed 可重放出同一份干扰计划）</span></p>
       <div id="commit-box" class="commit-box" hidden>
-        <h3>开局承诺</h3>
-        <p>开局交易：<a id="commit-tx" target="_blank" rel="noopener noreferrer"></a></p>
-        <p>链上承诺哈希：<code id="commit-hash"></code></p>
-        <p>赛后公开的原文：<code id="commit-preimage" class="preimage"></code></p>
-        <button id="btn-verify-commit" type="button">链上验证</button>
+        <h3 data-i18n="commit.title">开局承诺</h3>
+        <p><span data-i18n="commit.tx">开局交易：</span><a id="commit-tx" target="_blank" rel="noopener noreferrer"></a></p>
+        <p><span data-i18n="commit.hash">链上承诺哈希：</span><code id="commit-hash"></code></p>
+        <p><span data-i18n="commit.preimage">赛后公开的原文：</span><code id="commit-preimage" class="preimage"></code></p>
+        <button id="btn-verify-commit" type="button" data-i18n="commit.verify">链上验证</button>
         <p id="commit-verdict" aria-live="polite"></p>
       </div>
-      <button id="btn-again" type="button" class="primary">再来一局</button>
+      <button id="btn-again" type="button" class="primary" data-i18n="btn.again">再来一局</button>
     </section>
 
     <dialog id="rules" class="rules" aria-labelledby="rules-title">
       <div class="dialog-head">
-        <h2 id="rules-title">游戏规则</h2>
-        <button type="button" class="btn-close-dialog" aria-label="关闭规则">关闭</button>
+        <h2 id="rules-title" data-i18n="rules.title">游戏规则</h2>
+        <button type="button" class="btn-close-dialog" aria-label="关闭规则" data-i18n="btn.close" data-i18n-aria="rules.close.aria">关闭</button>
       </div>
 
+      <div data-lang="zh">
       <h3>1. 你是谁，你要做什么</h3>
       <p>你代表一个三体文明，和另一个文明连续相遇若干轮。目标是总分比对方高。你只需要做两件事：</p>
       <ol>
@@ -219,14 +223,160 @@
 
       <h4>例 H：清理者遇到执剑人</h4>
       <p>你选 #4 清理者，对方选 #1 执剑人，没有干扰。第 1 轮你偷袭得手 5 : 0，之后执剑人一直还手，每轮 1 : 1。6 轮下来 10 : 5，你赢了，可总分只有 10。如果双方都选执剑人和平相处，各有 18 分。清理者赢得了对局，却让自己的文明更穷。</p>
+      </div>
+      <div data-lang="en" hidden>
+      <h3>1. Who you are and what you do</h3>
+      <p>You represent a civilization and meet another one for several rounds in a row. The goal is a higher total score than the opponent. You only make two kinds of decisions:</p>
+      <ol>
+        <li>Before the match, pick a brain circuit. During the match it plays for you automatically.</li>
+        <li>When you are struck, decide whether to spend 1 point on mind-reading.</li>
+      </ol>
+
+      <h3>2. The four brain circuits</h3>
+      <p>Each round, the circuit’s input is the opponent’s last move and its output is your move. In round 1 the opponent is assumed to have cooperated. The same input always gives the same output: the circuit itself never lies.</p>
+      <p>These 4 circuits were taped out on X Layer with TapeOut (TapeID 1.2.271 to 4.2.271). Every computation and every mind-read in a match is an on-chain call to the circuit’s <code>eval</code>, which anyone can recompute.</p>
+      <table class="log">
+        <thead><tr><th scope="col">Circuit</th><th scope="col">Opponent cooperated</th><th scope="col">Opponent struck</th><th scope="col">Personality</th></tr></thead>
+        <tbody>
+          <tr><td>#1 Swordholder</td><td class="coop">Cooperate</td><td class="attack">Strike</td><td>Calm while you are calm, always strikes back</td></tr>
+          <tr><td>#2 Contrarian</td><td class="attack">Strike</td><td class="coop">Cooperate</td><td>Does the opposite</td></tr>
+          <tr><td>#3 Redemptionist</td><td class="coop">Cooperate</td><td class="coop">Cooperate</td><td>Always believes in good faith</td></tr>
+          <tr><td>#4 Cleaner</td><td class="attack">Strike</td><td class="attack">Strike</td><td>Strikes at any light</td></tr>
+        </tbody>
+      </table>
+
+      <h3>3. Scoring each round</h3>
+      <p>In short: cooperating together is a win-win, striking each other is a lose-lose, and a surprise strike exploits the cooperator.</p>
+      <table class="log">
+        <thead><tr><th scope="col">Situation</th><th scope="col">You</th><th scope="col">Opponent</th></tr></thead>
+        <tbody>
+          <tr><td>Both cooperate</td><td>3</td><td>3</td></tr>
+          <tr><td>You strike, opponent cooperates</td><td>5</td><td>0</td></tr>
+          <tr><td>You cooperate, opponent strikes</td><td>0</td><td>5</td></tr>
+          <tr><td>Both strike</td><td>1</td><td>1</td></tr>
+        </tbody>
+      </table>
+      <p>In a single round striking always scores more, but if everyone strikes, everyone gets only 1 point. That is the dark forest.</p>
+
+      <h3>4. Eras</h3>
+      <p>The era you pick decides the number of rounds, the sophon interference rate, and whether mind-reading is allowed.</p>
+      <table class="log">
+        <thead><tr><th scope="col">Era</th><th scope="col">Rounds</th><th scope="col">Interference</th><th scope="col">Mind-reading</th><th scope="col">How to play</th></tr></thead>
+        <tbody>
+          <tr><td>Stable Era</td><td>10</td><td>5%</td><td>Yes</td><td>Strikes are usually sincere; reading often wastes money</td></tr>
+          <tr><td>Chaotic Era</td><td>10</td><td>40%</td><td>Yes</td><td>Strikes are usually misunderstandings; worth reading</td></tr>
+          <tr><td>Tri-Solar Day</td><td>6</td><td>30%</td><td>No</td><td>Misunderstandings cannot be cleared; it is all on your brain</td></tr>
+          <tr><td>Flying Star Era</td><td>10</td><td>20%</td><td>Yes</td><td>Moderate interference; real and fake strikes are hardest to tell apart</td></tr>
+          <tr><td>Unknown Era</td><td>10</td><td>Random</td><td>Yes</td><td>Secretly Stable or Chaotic, revealed after the match</td></tr>
+        </tbody>
+      </table>
+
+      <p>You can tick “commit a hash of the match rules to X Layer”: before play, your wallet sends a 0 OKB transaction that puts a hash of the interference plan, the real era and the opponent brain on chain. The preimage is revealed afterwards, and “Verify on chain” on the result page confirms the rules were fixed before play and not changed during it.</p>
+
+      <h3>5. Sophon interference</h3>
+      <p>Each round, each side has a chance (the era’s interference rate) of being hijacked by the sophons: its brain is temporarily replaced by #4 Cleaner and strikes against its will. Interference is symmetric; you and the opponent are drawn independently each round.</p>
+      <ul>
+        <li>When you are interfered with, the game tells you right away: you know your own circuit, so you could tell anyway. You cannot defend yourself; only the opponent’s mind-reading can clear you.</li>
+        <li>You cannot see whether the opponent was interfered with until the match is over.</li>
+      </ul>
+
+      <h3>6. Mind-reading</h3>
+      <p>When struck, you can spend 1 point to read the opponent’s mind: the game re-evaluates this round with the opponent’s original brain.</p>
+      <p>With “burn OKB for each mind-read” ticked, each read also sends a transaction on X Layer that burns 0.0001 OKB to the <code>0x…dEaD</code> address. That OKB is never refunded, the read only happens after the transaction confirms, and every read transaction is linked in the match log. It is the real price of transparency: in a future version both players stake OKB, the winner takes the pot, and mind-reading fees are part of the game.</p>
+      <ul>
+        <li>If the result is Cooperate, it was the sophons: the opponent’s move is set back to Cooperate, the round is scored on real moves, and your fee is refunded.</li>
+        <li>If it is still Strike, that is the opponent’s nature: you lose 1 point and the score stands.</li>
+      </ul>
+      <p>The opponent’s brain is secret during the match, so you have to guess: was that strike the sophons, or did you meet a Cleaner?</p>
+      <h3>7. Examples</h3>
+      <p>All examples last 6 rounds. Examples A and B: both sides pick #1 Swordholder, and the opponent is interfered with in round 3.</p>
+
+      <h4>Example A: you hold, and the chain of suspicion begins</h4>
+      <table class="log">
+        <thead><tr><th scope="col">Round</th><th scope="col">You</th><th scope="col">Opponent</th><th scope="col">Score</th><th scope="col">What happened</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td class="coop">Cooperate</td><td class="coop">Cooperate</td><td>3 : 3</td><td>Normal</td></tr>
+          <tr><td>2</td><td class="coop">Cooperate</td><td class="coop">Cooperate</td><td>3 : 3</td><td>Normal</td></tr>
+          <tr><td>3</td><td class="coop">Cooperate</td><td class="attack">Strike</td><td>0 : 5</td><td>Opponent interfered with; you did not read</td></tr>
+          <tr><td>4</td><td class="attack">Strike</td><td class="coop">Cooperate</td><td>5 : 0</td><td>Your Swordholder retaliates</td></tr>
+          <tr><td>5</td><td class="coop">Cooperate</td><td class="attack">Strike</td><td>0 : 5</td><td>The opponent retaliates</td></tr>
+          <tr><td>6</td><td class="attack">Strike</td><td class="coop">Cooperate</td><td>5 : 0</td><td>You retaliate again</td></tr>
+        </tbody>
+      </table>
+      <p>Total 16 : 16. One misunderstanding led to endless retaliation.</p>
+
+      <h4>Example B: you read the mind, and the chain is cut</h4>
+      <table class="log">
+        <thead><tr><th scope="col">Round</th><th scope="col">You</th><th scope="col">Opponent</th><th scope="col">Score</th><th scope="col">What happened</th></tr></thead>
+        <tbody>
+          <tr><td>1–2</td><td class="coop">Cooperate</td><td class="coop">Cooperate</td><td>6 : 6</td><td>Normal</td></tr>
+          <tr><td>3</td><td class="coop">Cooperate</td><td class="coop">Cooperate (corrected)</td><td>3 : 3</td><td>Reading reveals interference; set back to Cooperate, fee refunded</td></tr>
+          <tr><td>4–6</td><td class="coop">Cooperate</td><td class="coop">Cooperate</td><td>9 : 9</td><td>Cooperation continues</td></tr>
+        </tbody>
+      </table>
+      <p>Total 18 : 18, 2 more points each.</p>
+
+      <h4>Example C: the opponent really is a Cleaner</h4>
+      <p>You pick #1, the opponent picks #4. In round 1 you cooperate and it strikes; you spend 1 point to read and it is still a strike. You score 0 − 1 = −1 that round and the opponent scores 5. After that your Swordholder strikes back automatically, and reading again only wastes points.</p>
+
+      <h4>Example D: you are interfered with, and the opponent clears you</h4>
+      <p>Both pick #1 Swordholder; you are interfered with in round 3. The game tells you “the sophons took over your brain”. You cannot defend yourself, so it is up to the opponent.</p>
+      <table class="log">
+        <thead><tr><th scope="col">Round</th><th scope="col">You</th><th scope="col">Opponent</th><th scope="col">Score</th><th scope="col">What happened</th></tr></thead>
+        <tbody>
+          <tr><td>1–2</td><td class="coop">Cooperate</td><td class="coop">Cooperate</td><td>6 : 6</td><td>Normal</td></tr>
+          <tr><td>3</td><td class="coop">Cooperate (corrected)</td><td class="coop">Cooperate</td><td>3 : 3</td><td>You struck under interference; the opponent read your mind and saw you were framed</td></tr>
+          <tr><td>4–6</td><td class="coop">Cooperate</td><td class="coop">Cooperate</td><td>9 : 9</td><td>Cooperation continues</td></tr>
+        </tbody>
+      </table>
+      <p>Total 18 : 18. Without the opponent’s read it would have become the chain from Example A, 16 : 16.</p>
+
+      <h4>Example E: against a Redemptionist, a misunderstanding hurts once</h4>
+      <p>You pick #1 Swordholder, the opponent picks #3 Redemptionist. The opponent is interfered with in round 3 and you hold.</p>
+      <table class="log">
+        <thead><tr><th scope="col">Round</th><th scope="col">You</th><th scope="col">Opponent</th><th scope="col">Score</th><th scope="col">What happened</th></tr></thead>
+        <tbody>
+          <tr><td>1–2</td><td class="coop">Cooperate</td><td class="coop">Cooperate</td><td>6 : 6</td><td>Normal</td></tr>
+          <tr><td>3</td><td class="coop">Cooperate</td><td class="attack">Strike</td><td>0 : 5</td><td>Opponent interfered with</td></tr>
+          <tr><td>4</td><td class="attack">Strike</td><td class="coop">Cooperate</td><td>5 : 0</td><td>Your Swordholder retaliates</td></tr>
+          <tr><td>5–6</td><td class="coop">Cooperate</td><td class="coop">Cooperate</td><td>6 : 6</td><td>The Redemptionist never holds a grudge, so cooperation resumes</td></tr>
+        </tbody>
+      </table>
+      <p>Total 17 : 17. The Redemptionist never strikes back, so the chain breaks after one step. The price: a Cleaner bullies it forever, see Example F.</p>
+
+      <h4>Example F: Redemptionist against Cleaner</h4>
+      <p>You pick #3 Redemptionist, the opponent picks #4 Cleaner, no interference. You cooperate every round and it strikes every round: 0 : 30 after 6 rounds. Reading does not help either; every read shows a real strike and costs another point. Picking the Redemptionist is a bet that your opponent is kind.</p>
+
+      <h4>Example G: Swordholder against Contrarian</h4>
+      <p>You pick #1 Swordholder, the opponent picks #2 Contrarian, no interference.</p>
+      <table class="log">
+        <thead><tr><th scope="col">Round</th><th scope="col">You</th><th scope="col">Opponent</th><th scope="col">Score</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td class="coop">Cooperate</td><td class="attack">Strike</td><td>0 : 5</td></tr>
+          <tr><td>2</td><td class="attack">Strike</td><td class="attack">Strike</td><td>1 : 1</td></tr>
+          <tr><td>3</td><td class="attack">Strike</td><td class="coop">Cooperate</td><td>5 : 0</td></tr>
+          <tr><td>4</td><td class="coop">Cooperate</td><td class="coop">Cooperate</td><td>3 : 3</td></tr>
+          <tr><td>5–6</td><td colspan="2">Rounds 1–2 repeat</td><td>1 : 6</td></tr>
+        </tbody>
+      </table>
+      <p>Total 10 : 15. The two cycle every 4 rounds and the Contrarian comes out ahead. Note: the Contrarian’s strikes are all intentional, so reading only wastes points.</p>
+
+      <h4>Example H: Cleaner against Swordholder</h4>
+      <p>You pick #4 Cleaner, the opponent picks #1 Swordholder, no interference. Your surprise strike wins round 1 at 5 : 0, then the Swordholder strikes back every round at 1 : 1. After 6 rounds it is 10 : 5: you win, but with only 10 points. Had both picked Swordholder and kept the peace, each would have 18. The Cleaner wins the match and leaves its own civilization poorer.</p>
+      </div>
     </dialog>
     <dialog id="brain-info" class="rules" aria-labelledby="brain-title">
       <div class="dialog-head">
         <h2 id="brain-title"></h2>
-        <button type="button" class="btn-close-dialog" aria-label="关闭大脑说明">关闭</button>
+        <button type="button" class="btn-close-dialog" aria-label="关闭大脑说明" data-i18n="btn.close" data-i18n-aria="brain.close.aria">关闭</button>
       </div>
       <div id="brain-body"></div>
     </dialog>
+    <footer class="site-footer">
+      <span id="footer-version"></span>
+      <span aria-hidden="true">·</span>
+      <span id="footer-x"></span>
+    </footer>
   </main>
   <script type="module" src="/web/app.js"></script>
 </body>

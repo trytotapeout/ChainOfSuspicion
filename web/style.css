@@ -85,6 +85,8 @@ button.danger { border-color: var(--attack); color: var(--attack); }
 .hint { color: var(--muted); margin-top: 12px; }
 a { color: var(--accent); }
 .title-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.head-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.site-footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--glass-edge); display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; color: var(--muted); font-size: 13px; text-shadow: 0 0 6px #000; }
 .rules {
   /* 规则弹窗和大脑说明弹窗共用；宽度和主区域一致 */
   width: min(1120px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow-y: auto;
