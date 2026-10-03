@@ -11,11 +11,13 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: radial-gradient(ellipse at 75% 40%, #141a2c 0%, var(--bg) 70%) fixed; color: var(--text); line-height: 1.6; min-height: 100vh; }
+/* 正文直接压在星空上，加一层暗色阴影保证在太阳光晕上也清晰 */
+main h1, main h2, main .sub, main .evaluator, main .hint, main .options, main .prompt { text-shadow: 0 0 6px #000, 0 0 2px #000; }
 #starfield { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; }
 .starfield-caption { position: fixed; right: 16px; bottom: 10px; margin: 0; z-index: 1; font-size: 12px; color: var(--muted); pointer-events: none; }
 main {
   position: relative; z-index: 1; max-width: 760px; margin: 0 auto; padding: 32px 20px 64px;
-  background: rgba(11, 13, 18, 0.72); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); min-height: 100vh;
+  background: rgba(11, 13, 18, 0.5); min-height: 100vh;
 }
 /* 右侧留白足够时，内容区靠左，把右边留给三体星系 */
 @media (min-width: 1240px) { main { margin-left: max(24px, calc((100vw - 1240px) / 2)); } }

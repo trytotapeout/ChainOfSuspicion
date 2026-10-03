@@ -9,6 +9,11 @@ const PLANET_COLOR = '120, 190, 255';
 const TRAIL = { sun: 160, planet: 260 };
 const SPEED = { stable: 0.55, chaotic: 0.7, triple: 0.5 }; // 每秒推进的模拟时间
 const VIEW_RADIUS = 3.2; // 画面要容纳的模拟坐标半径
+// 星体大小随画面缩放（单位：模拟坐标），并设下限，小窗口里也看得清。
+const SUN_CORE = 0.11;
+const SUN_GLOW = 0.75;
+const PLANET_SIZE = 0.05;
+const size = (r, scale, min) => Math.max(min, r * scale);
 const MODE_LABEL = { stable: '恒纪元', chaotic: '乱纪元', triple: '三日凌空' };
 
 // anchor：页面主内容区。宽屏时星系画在它右侧的留白里，窄屏时画在内容背后。
@@ -49,8 +54,8 @@ export function createStarfield(canvas, caption, anchor) {
   function view() {
     const right = anchor ? anchor.getBoundingClientRect().right : w / 2;
     const free = w - right;
-    if (free > 320) return { cx: right + free / 2, cy: h * 0.45, scale: (Math.min(free, h) / 2 / VIEW_RADIUS) * 0.92 };
-    return { cx: w / 2, cy: h * 0.32, scale: (Math.min(w, h) / 2 / VIEW_RADIUS) * 0.9 };
+    if (free > 320) return { cx: right + free / 2, cy: h * 0.45, scale: (Math.min(free, h) / 2 / VIEW_RADIUS) * 0.95 };
+    return { cx: w / 2, cy: h * 0.4, scale: (Math.min(w, h) / 2 / VIEW_RADIUS) * 1.05 };
   }
 
   function updateCaption() {
@@ -72,7 +77,7 @@ export function createStarfield(canvas, caption, anchor) {
       const color = i < 3 ? SUN_COLORS[i] : PLANET_COLOR;
       for (let k = 1; k < trail.length; k++) {
         ctx.strokeStyle = `rgba(${color}, ${(k / trail.length) * (i < 3 ? 0.35 : 0.5)})`;
-        ctx.lineWidth = i < 3 ? 1.5 : 1;
+        ctx.lineWidth = i < 3 ? 2.5 : 1.5;
         ctx.beginPath();
         ctx.moveTo(cx + trail[k - 1].x * scale, cy + trail[k - 1].y * scale);
         ctx.lineTo(cx + trail[k].x * scale, cy + trail[k].y * scale);
@@ -80,27 +85,55 @@ export function createStarfield(canvas, caption, anchor) {
       }
     });
 
+    // 光晕用叠加混合，太阳靠近时光晕会融在一起变亮
+    const core = size(SUN_CORE, scale, 9);
+    const glowR = size(SUN_GLOW, scale, 70);
+    ctx.globalCompositeOperation = 'lighter';
     sim.suns.forEach((s, i) => {
       const x = cx + s.x * scale;
       const y = cy + s.y * scale;
-      const glow = ctx.createRadialGradient(x, y, 0, x, y, 34);
-      glow.addColorStop(0, `rgba(${SUN_COLORS[i]}, 0.9)`);
-      glow.addColorStop(0.25, `rgba(${SUN_COLORS[i]}, 0.35)`);
+      const glow = ctx.createRadialGradient(x, y, core * 0.5, x, y, glowR);
+      glow.addColorStop(0, `rgba(${SUN_COLORS[i]}, 0.85)`);
+      glow.addColorStop(0.2, `rgba(${SUN_COLORS[i]}, 0.4)`);
+      glow.addColorStop(0.5, `rgba(${SUN_COLORS[i]}, 0.12)`);
       glow.addColorStop(1, `rgba(${SUN_COLORS[i]}, 0)`);
       ctx.fillStyle = glow;
       ctx.beginPath();
-      ctx.arc(x, y, 34, 0, Math.PI * 2);
+      ctx.arc(x, y, glowR, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = `rgb(${SUN_COLORS[i]})`;
+    });
+    ctx.globalCompositeOperation = 'source-over';
+    sim.suns.forEach((s, i) => {
+      const x = cx + s.x * scale;
+      const y = cy + s.y * scale;
+      const body = ctx.createRadialGradient(x - core * 0.3, y - core * 0.3, 0, x, y, core);
+      body.addColorStop(0, '#fffaf0');
+      body.addColorStop(1, `rgb(${SUN_COLORS[i]})`);
+      ctx.fillStyle = body;
       ctx.beginPath();
-      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.arc(x, y, core, 0, Math.PI * 2);
       ctx.fill();
     });
 
+    // 三体星球：亮面朝向质心方向，带一圈淡蓝大气
     const p = sim.planet;
-    ctx.fillStyle = `rgb(${PLANET_COLOR})`;
+    const px = cx + p.x * scale;
+    const py = cy + p.y * scale;
+    const pr = size(PLANET_SIZE, scale, 5);
+    const atmo = ctx.createRadialGradient(px, py, pr, px, py, pr * 2.6);
+    atmo.addColorStop(0, `rgba(${PLANET_COLOR}, 0.35)`);
+    atmo.addColorStop(1, `rgba(${PLANET_COLOR}, 0)`);
+    ctx.fillStyle = atmo;
     ctx.beginPath();
-    ctx.arc(cx + p.x * scale, cy + p.y * scale, 3, 0, Math.PI * 2);
+    ctx.arc(px, py, pr * 2.6, 0, Math.PI * 2);
+    ctx.fill();
+    const lit = Math.atan2(cy - py, cx - px);
+    const planet = ctx.createRadialGradient(px + Math.cos(lit) * pr * 0.5, py + Math.sin(lit) * pr * 0.5, 0, px, py, pr);
+    planet.addColorStop(0, '#e6f4ff');
+    planet.addColorStop(1, '#2d5f99');
+    ctx.fillStyle = planet;
+    ctx.beginPath();
+    ctx.arc(px, py, pr, 0, Math.PI * 2);
     ctx.fill();
 
     // 文明毁灭时整个画面闪一下
