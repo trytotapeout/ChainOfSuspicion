@@ -16,8 +16,7 @@ const PLANET_SIZE = 0.05;
 const size = (r, scale, min) => Math.max(min, r * scale);
 const MODE_LABEL = { stable: '恒纪元', chaotic: '乱纪元', triple: '三日凌空' };
 
-// anchor：页面主内容区。宽屏时星系画在它右侧的留白里，窄屏时画在内容背后。
-export function createStarfield(canvas, caption, anchor) {
+export function createStarfield(canvas, caption) {
   const ctx = canvas.getContext('2d');
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   let sim = createSimulation('stable');
@@ -50,13 +49,9 @@ export function createStarfield(canvas, caption, anchor) {
     trails = [...sim.suns, sim.planet].map(() => []);
   }
 
-  // 星系中心：宽屏时偏向右侧留白，但往内容区靠一些，让轨道从玻璃卡片后面穿过；
-  // 窄屏时画在视口中间（内容背后）。
+  // 星系画在视口正中，位于居中的内容区背后，透过磨砂玻璃卡片能看到它。
   function view() {
-    const right = anchor ? anchor.getBoundingClientRect().right : w / 2;
-    const free = w - right;
-    if (free > 320) return { cx: right + free * 0.08, cy: h * 0.5, scale: (Math.min(free * 1.6, h) / 2 / VIEW_RADIUS) * 1.1 };
-    return { cx: w / 2, cy: h * 0.4, scale: (Math.min(w, h) / 2 / VIEW_RADIUS) * 1.05 };
+    return { cx: w / 2, cy: h * 0.5, scale: (Math.min(w, h) / 2 / VIEW_RADIUS) * 1.1 };
   }
 
   function updateCaption() {

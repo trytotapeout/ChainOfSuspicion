@@ -16,7 +16,7 @@ const $ = (id) => document.getElementById(id);
 const actionText = (a) => (a === ATTACK ? '<span class="attack">打击</span>' : '<span class="coop">交流</span>');
 
 // 背景：三体星系实时引力模拟，跟随纪元切换。未知纪元在对局中统一画乱纪元，不泄露真实纪元。
-const starfield = createStarfield($('starfield'), $('starfield-caption'), document.querySelector('main'));
+const starfield = createStarfield($('starfield'), $('starfield-caption'));
 const ERA_SKY = { stable: 'stable', chaotic: 'chaotic', triple: 'triple', unknown: 'chaotic' };
 
 let selected = 1;
