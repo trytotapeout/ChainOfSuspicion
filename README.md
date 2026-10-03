@@ -2,6 +2,8 @@
 
 中文 | [English](README.en.md)
 
+在线试玩：https://trytotapeout.github.io/ChainOfSuspicion/
+
 一个基于 [TapeOut](https://tapeout.net) 的链上博弈游戏。三体人的大脑是在 X Layer 上流片的真实电路：思考透明、相同输入一定得到相同输出，任何人都能复算。游戏里的每一次计算，都通过链上调用电路的 `eval` 完成。
 
 > 地球环境日益恶化，人类派你乘坐星舰去殖民三体星球。三体人不会撒谎，思考透明。你的大脑被注入了读心术，可以消耗 OKB 使用。但要注意：三体大脑打击了你，也可能是智子在作祟。
@@ -111,9 +113,11 @@ npm run preview        # 打包后在 http://localhost:5173/ChainOfSuspicion/ �
 
 1. 改完代码后运行 `npm run build`，把更新后的 `docs/` 一起提交推送。
 2. GitHub 仓库 Settings → Pages → Build and deployment → Source 选 “Deploy from a branch”，分支选 `main`，目录选 `/docs`，保存。
-3. 几分钟后访问 `https://<用户或组织>.github.io/ChainOfSuspicion/`。
+3. 几分钟后访问 https://trytotapeout.github.io/ChainOfSuspicion/ 。
 
-`docs/` 是生成目录，不要手动修改，改源码后重新运行 `npm run build`。GitHub Pages 对私有仓库需要付费套餐（Pro / Team / Enterprise），免费账户需要把仓库设为公开。
+GitHub Pages 只在主仓库 [trytotapeout/ChainOfSuspicion](https://github.com/trytotapeout/ChainOfSuspicion)（公开）上开启，备份仓库不开。
+
+`docs/` 是生成目录，不要手动修改，改源码后重新运行 `npm run build`。
 
 ### 目录结构
 

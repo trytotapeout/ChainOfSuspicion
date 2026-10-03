@@ -2,6 +2,8 @@
 
 [中文](README.md) | English
 
+Play online: https://trytotapeout.github.io/ChainOfSuspicion/
+
 An on-chain strategy game built on [TapeOut](https://tapeout.net). The Trisolaran brains are real circuits taped out on X Layer: their thinking is transparent, the same input always gives the same output, and anyone can recompute it. Every computation in the game is an on-chain call to the circuit’s `eval`.
 
 > Earth’s environment is collapsing, and humanity sends you aboard a starship to colonize the Trisolaran world. Trisolarans cannot lie: their thoughts are transparent. Your brain has been given a mind-reading ability that costs OKB to use. But be careful: when a Trisolaran brain strikes you, it may be the sophons at work.
@@ -110,9 +112,11 @@ Browsers load native ES modules directly, so “building” just copies `web/` a
 
 1. After changing code, run `npm run build` and commit and push the updated `docs/` along with it.
 2. In the GitHub repository go to Settings → Pages → Build and deployment, set Source to “Deploy from a branch”, choose the `main` branch and the `/docs` folder, and save.
-3. A few minutes later, open `https://<user-or-org>.github.io/ChainOfSuspicion/`.
+3. A few minutes later, open https://trytotapeout.github.io/ChainOfSuspicion/ .
 
-`docs/` is generated output; do not edit it by hand. Change the source and run `npm run build` again. GitHub Pages for private repositories requires a paid plan (Pro, Team or Enterprise); on a free account the repository must be public.
+GitHub Pages is enabled only on the main repository [trytotapeout/ChainOfSuspicion](https://github.com/trytotapeout/ChainOfSuspicion) (public), not on the backup.
+
+`docs/` is generated output; do not edit it by hand. Change the source and run `npm run build` again.
 
 ### Layout
 
