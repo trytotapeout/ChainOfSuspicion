@@ -1,5 +1,7 @@
 # 猜疑链 Chain of Suspicion
 
+中文 | [English](README.en.md)
+
 一个基于 [TapeOut](https://tapeout.net) 的链上博弈游戏。三体人的大脑是在 X Layer 上流片的真实电路：思考透明、相同输入一定得到相同输出，任何人都能复算。游戏里的每一次计算，都通过链上调用电路的 `eval` 完成。
 
 > 地球环境日益恶化，人类派你乘坐星舰去殖民三体星球。三体人不会撒谎，思考透明。你的大脑被注入了读心术，可以消耗 OKB 使用。但要注意：三体大脑打击了你，也可能是智子在作祟。
@@ -84,13 +86,15 @@
 
 ## 开发
 
-需要 Node.js 18 或更高版本，项目没有任何第三方依赖，不需要 `npm install`，也没有构建步骤。
+需要 Node.js 18 或更高版本，项目没有任何第三方依赖，不需要 `npm install`。
 
 ```bash
-npm start              # 启动本地服务器：http://localhost:5173（可用 PORT 环境变量改端口）
+npm start              # 启动本地服务器：http://localhost:5173/web/（可用 PORT 环境变量改端口）
 npm test               # 运行单元测试
 npm run verify-chain   # 联网核对：用链上 eval 跑 4 个大脑的真值表，和本地模拟对比
 npm run simulate       # 批量模拟各大脑两两对战的平均得分，用来调平衡
+npm run build          # 打包到 docs/，用于 GitHub Pages 发布
+npm run preview        # 打包后在 http://localhost:5173/ChainOfSuspicion/ 预览打包结果
 ```
 
 `npm run simulate` 可以带参数：`npm run simulate -- 干扰率 轮数 局数`，例如 `npm run simulate -- 0.4 10 2000`。
@@ -100,6 +104,16 @@ npm run simulate       # 批量模拟各大脑两两对战的平均得分，用�
 本地服务器只监听 `127.0.0.1`，没有鉴权，只用于本地开发和试玩。
 
 开局可以选“本地模拟（离线）”，这时电路由代码模拟，不访问网络，适合断网时开发。
+
+### 发布到 GitHub Pages
+
+浏览器直接加载原生 ES module，所以“打包”只是把 `web/` 和 `src/` 原样复制到 `docs/`，入口页提到 `docs/index.html`。页面里的路径都是相对路径，部署在 `https://<用户>.github.io/ChainOfSuspicion/` 这种子路径下也能用。`docs/.nojekyll` 让 GitHub Pages 跳过 Jekyll 处理。
+
+1. 改完代码后运行 `npm run build`，把更新后的 `docs/` 一起提交推送。
+2. GitHub 仓库 Settings → Pages → Build and deployment → Source 选 “Deploy from a branch”，分支选 `main`，目录选 `/docs`，保存。
+3. 几分钟后访问 `https://<用户或组织>.github.io/ChainOfSuspicion/`。
+
+`docs/` 是生成目录，不要手动修改，改源码后重新运行 `npm run build`。GitHub Pages 对私有仓库需要付费套餐（Pro / Team / Enterprise），免费账户需要把仓库设为公开。
 
 ### 目录结构
 
@@ -125,9 +139,10 @@ web/                   浏览器界面（原生 HTML / CSS / JS 模块）
   starfield.js         背景：三体星系实时引力模拟的 Canvas 渲染，随纪元切换
   brainviz.js          大脑卡片：线框大脑 + 链上 NAND 网表，悬停 / 选中时信号逐门传播
   eraviz.js            纪元卡片：天空、温度计、光照条（只营造氛围，不影响计分）
-scripts/               本地服务器、批量模拟、链上核对
+scripts/               本地服务器、打包、批量模拟、链上核对
+docs/                  npm run build 的输出，GitHub Pages 从这里发布（生成目录，不要手改）
 test/                  单元测试（node:test）
-docs/brain-spec.md     玩家自定义大脑的接口规范和准入检查（后续扩展）
+BRAIN_SPEC.md          玩家自定义大脑的接口规范和准入检查（后续扩展）
 ```
 
 ### 扩展点
@@ -138,4 +153,4 @@ docs/brain-spec.md     玩家自定义大脑的接口规范和准入检查（后
 evaluate(circuitId, input) → Promise<0 | 1>
 ```
 
-更换电路来源（比如接入玩家自己流片的电路）只需要新增一个 evaluator，计分、干扰、读心和界面都不用改。玩家自定义大脑的接口和准入规则见 [docs/brain-spec.md](docs/brain-spec.md)。
+更换电路来源（比如接入玩家自己流片的电路）只需要新增一个 evaluator，计分、干扰、读心和界面都不用改。玩家自定义大脑的接口和准入规则见 [BRAIN_SPEC.md](BRAIN_SPEC.md)。

@@ -8,7 +8,9 @@
     "start": "node scripts/serve.js",
     "test": "node --test test/",
     "simulate": "node scripts/simulate.js",
-    "verify-chain": "node scripts/verify-chain.js"
+    "verify-chain": "node scripts/verify-chain.js",
+    "build": "node scripts/build.js",
+    "preview": "npm run build && node scripts/serve.js --docs"
   },
   "engines": {
     "node": ">=18"
