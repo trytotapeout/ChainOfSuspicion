@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>猜疑链 · MVP</title>
+  <link rel="stylesheet" href="/web/style.css" />
+</head>
+<body>
+  <main>
+    <header>
+      <div class="title-row">
+        <h1>猜疑链</h1>
+        <button id="btn-rules" type="button" aria-haspopup="dialog" aria-controls="rules">帮助 / 规则</button>
+      </div>
+      <p class="sub">两个文明相遇。对方打击了你，是智子在作祟，还是遇到了清理者？</p>
+      <p class="evaluator">电路计算：<span id="evaluator-name"></span></p>
+      <p class="evaluator">电路合约（X Layer）：<a id="contract-link" href="#" target="_blank" rel="noopener noreferrer"><code id="contract-addr"></code></a></p>
+    </header>
+
+    <section id="setup" aria-labelledby="setup-title">
+      <h2 id="setup-title">选择出战大脑</h2>
+      <div id="circuit-list" class="circuits" role="radiogroup" aria-label="出战电路"></div>
+      <div class="options">
+        <label>轮数 <input id="opt-rounds" type="number" min="3" max="30" value="10" /></label>
+        <label>智子干扰率 <input id="opt-rate" type="number" min="0" max="0.9" step="0.05" value="0.2" /></label>
+        <fieldset class="evaluator-pick">
+          <legend>电路计算</legend>
+          <label><input type="radio" name="evaluator" value="chain" checked /> X Layer 链上电路</label>
+          <label><input type="radio" name="evaluator" value="local" /> 本地模拟（离线）</label>
+        </fieldset>
+      </div>
+      <button id="btn-start" type="button" class="primary">开始相遇</button>
+      <p class="hint">第一次玩？点右上角的“帮助 / 规则”。</p>
+    </section>
+
+    <section id="game" hidden aria-labelledby="game-title">
+      <h2 id="game-title">第 <span id="round-no">1</span> / <span id="round-total">10</span> 轮</h2>
+      <div class="scoreboard">
+        <div><span class="label">我方（<span id="my-circuit"></span>）</span><span id="my-score" class="score">0</span></div>
+        <div><span class="label">对方（未知）</span><span id="ai-score" class="score">0</span></div>
+      </div>
+      <div id="prompt" class="prompt" aria-live="polite"></div>
+      <div id="actions" class="actions"></div>
+      <table class="log">
+        <caption>对局记录</caption>
+        <thead><tr><th scope="col">轮</th><th scope="col">我方</th><th scope="col">对方</th><th scope="col">读心</th><th scope="col">本轮得分</th></tr></thead>
+        <tbody id="log-body"></tbody>
+      </table>
+    </section>
+
+    <section id="result" hidden aria-labelledby="result-title">
+      <h2 id="result-title">相遇结束</h2>
+      <p id="result-summary" class="prompt"></p>
+      <table class="log">
+        <caption>赛后公开：干扰计划</caption>
+        <thead><tr><th scope="col">轮</th><th scope="col">我方被干扰</th><th scope="col">对方被干扰</th><th scope="col">最终动作（我 : 对方）</th></tr></thead>
+        <tbody id="reveal-body"></tbody>
+      </table>
+      <p class="seed">本局 seed：<code id="seed"></code>（同一个 seed 可重放出同一份干扰计划）</p>
+      <button id="btn-again" type="button" class="primary">再来一局</button>
+    </section>
+
+    <dialog id="rules" class="rules" aria-labelledby="rules-title">
+      <div class="dialog-head">
+        <h2 id="rules-title">游戏规则</h2>
+        <button type="button" class="btn-close-rules" aria-label="关闭规则">关闭</button>
+      </div>
+
+      <h3>1. 你是谁，你要做什么</h3>
+      <p>你代表一个三体文明，和另一个文明连续相遇若干轮。目标是总分比对方高。你只需要做两件事：</p>
+      <ol>
+        <li>开局前，选一个大脑电路出战。对局中它会自动替你行动。</li>
+        <li>对局中被打击时，决定要不要花 1 分读心。</li>
+      </ol>
+
+      <h3>2. 四个大脑电路</h3>
+      <p>每轮电路的输入是对方上一轮的动作，输出是你本轮的动作。第 1 轮默认对方交流过。电路相同输入一定得到相同输出，它自己永远不会撒谎。</p>
+      <p>这 4 个电路已经在 X Layer 上通过 TapeOut 流片（TapeID 1.2.271～4.2.271）。对局中每一次计算、每一次读心，都是在链上调用电路的 <code>eval</code> 算出来的，任何人都可以复算。</p>
+      <table class="log">
+        <thead><tr><th scope="col">电路</th><th scope="col">对方上轮交流</th><th scope="col">对方上轮打击</th><th scope="col">性格</th></tr></thead>
+        <tbody>
+          <tr><td>#1 执剑人</td><td class="coop">交流</td><td class="attack">打击</td><td>你不动我不动，你打我必还手</td></tr>
+          <tr><td>#2 逆行者</td><td class="attack">打击</td><td class="coop">交流</td><td>反着来</td></tr>
+          <tr><td>#3 拯救派</td><td class="coop">交流</td><td class="coop">交流</td><td>永远相信善意</td></tr>
+          <tr><td>#4 清理者</td><td class="attack">打击</td><td class="attack">打击</td><td>见光就打</td></tr>
+        </tbody>
+      </table>
+
+      <h3>3. 每轮怎么计分</h3>
+      <p>一句话：一起交流双赢，互相打击双输，偷袭的人占便宜，被偷袭的人吃亏。</p>
+      <table class="log">
+        <thead><tr><th scope="col">情况</th><th scope="col">你</th><th scope="col">对方</th></tr></thead>
+        <tbody>
+          <tr><td>都交流</td><td>3</td><td>3</td></tr>
+          <tr><td>你打击，对方交流</td><td>5</td><td>0</td></tr>
+          <tr><td>你交流，对方打击</td><td>0</td><td>5</td></tr>
+          <tr><td>都打击</td><td>1</td><td>1</td></tr>
+        </tbody>
+      </table>
+      <p>单看一轮，打击总能多拿分；可如果大家都打击，所有人都只剩 1 分。这就是黑暗森林。</p>
+
+      <h3>4. 智子干扰</h3>
+      <p>每轮每一方都有一定概率（开局时设定的干扰率）被智子操控，大脑临时换成 #4 清理者，打出一次并非本意的打击。干扰对双方是对称的，你和对方每轮各自独立抽签。</p>
+      <ul>
+        <li>你自己被干扰时，界面会当场提示你：你知道自己的电路，本来就能推断出来。你没法替自己辩解，只能等对方读心还你清白。</li>
+        <li>对方有没有被干扰，你看不到，赛后才公开。</li>
+      </ul>
+
+      <h3>5. 读心</h3>
+      <p>被打击时，你可以花 1 分读心：系统用对方原本的大脑重新计算这一轮。</p>
+      <ul>
+        <li>算出来是交流，说明是智子干扰：对方这一轮改回交流，按真实动作计分，读心费退还。</li>
+        <li>算出来还是打击，说明对方本性如此：扣你 1 分，比分不变。</li>
+      </ul>
+      <p>对方的大脑在对局中保密，所以你要猜：这次打击是智子干的，还是遇到了清理者？</p>
+
+      <h3>6. 例子</h3>
+      <p>以下例子都打 6 轮。例 A、B：双方都选 #1 执剑人，第 3 轮对方被智子干扰。</p>
+
+      <h4>例 A：你选择忍下，猜疑链开始</h4>
+      <table class="log">
+        <thead><tr><th scope="col">轮</th><th scope="col">你</th><th scope="col">对方</th><th scope="col">得分</th><th scope="col">发生了什么</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td class="coop">交流</td><td class="coop">交流</td><td>3 : 3</td><td>正常</td></tr>
+          <tr><td>2</td><td class="coop">交流</td><td class="coop">交流</td><td>3 : 3</td><td>正常</td></tr>
+          <tr><td>3</td><td class="coop">交流</td><td class="attack">打击</td><td>0 : 5</td><td>对方被智子干扰，你没读心</td></tr>
+          <tr><td>4</td><td class="attack">打击</td><td class="coop">交流</td><td>5 : 0</td><td>你的执剑人自动报复</td></tr>
+          <tr><td>5</td><td class="coop">交流</td><td class="attack">打击</td><td>0 : 5</td><td>对方回敬</td></tr>
+          <tr><td>6</td><td class="attack">打击</td><td class="coop">交流</td><td>5 : 0</td><td>你再回敬</td></tr>
+        </tbody>
+      </table>
+      <p>总分 16 : 16。一次误会引发了无休止的互相报复。</p>
+
+      <h4>例 B：你选择读心，猜疑链被切断</h4>
+      <table class="log">
+        <thead><tr><th scope="col">轮</th><th scope="col">你</th><th scope="col">对方</th><th scope="col">得分</th><th scope="col">发生了什么</th></tr></thead>
+        <tbody>
+          <tr><td>1～2</td><td class="coop">交流</td><td class="coop">交流</td><td>6 : 6</td><td>正常</td></tr>
+          <tr><td>3</td><td class="coop">交流</td><td class="coop">交流（已纠正）</td><td>3 : 3</td><td>读心发现是干扰，改回交流，读心费退还</td></tr>
+          <tr><td>4～6</td><td class="coop">交流</td><td class="coop">交流</td><td>9 : 9</td><td>继续合作</td></tr>
+        </tbody>
+      </table>
+      <p>总分 18 : 18，双方各多拿 2 分。</p>
+
+      <h4>例 C：对方本来就是清理者</h4>
+      <p>你选 #1，对方选 #4。第 1 轮你交流、对方打击，你花 1 分读心，结果还是打击。这一轮你得 0 − 1 = −1 分，对方得 5 分。之后你的执剑人会自动还手，再读心也只是白花钱。</p>
+
+      <h4>例 D：你被智子干扰，对方读心还你清白</h4>
+      <p>双方都选 #1 执剑人，第 3 轮你被干扰。界面会提示“你的大脑被智子操控了”，你没法辩解，只能看对方。</p>
+      <table class="log">
+        <thead><tr><th scope="col">轮</th><th scope="col">你</th><th scope="col">对方</th><th scope="col">得分</th><th scope="col">发生了什么</th></tr></thead>
+        <tbody>
+          <tr><td>1～2</td><td class="coop">交流</td><td class="coop">交流</td><td>6 : 6</td><td>正常</td></tr>
+          <tr><td>3</td><td class="coop">交流（已纠正）</td><td class="coop">交流</td><td>3 : 3</td><td>你被干扰打出打击；对方读心，发现你是被冤枉的</td></tr>
+          <tr><td>4～6</td><td class="coop">交流</td><td class="coop">交流</td><td>9 : 9</td><td>继续合作</td></tr>
+        </tbody>
+      </table>
+      <p>总分 18 : 18。如果对方没有读心，就会变成例 A 那样的猜疑链，16 : 16。</p>
+
+      <h4>例 E：遇到拯救派，误会只伤一次</h4>
+      <p>你选 #1 执剑人，对方选 #3 拯救派，第 3 轮对方被干扰，你选择忍下。</p>
+      <table class="log">
+        <thead><tr><th scope="col">轮</th><th scope="col">你</th><th scope="col">对方</th><th scope="col">得分</th><th scope="col">发生了什么</th></tr></thead>
+        <tbody>
+          <tr><td>1～2</td><td class="coop">交流</td><td class="coop">交流</td><td>6 : 6</td><td>正常</td></tr>
+          <tr><td>3</td><td class="coop">交流</td><td class="attack">打击</td><td>0 : 5</td><td>对方被干扰</td></tr>
+          <tr><td>4</td><td class="attack">打击</td><td class="coop">交流</td><td>5 : 0</td><td>你的执剑人自动报复</td></tr>
+          <tr><td>5～6</td><td class="coop">交流</td><td class="coop">交流</td><td>6 : 6</td><td>拯救派从不记仇，合作自动恢复</td></tr>
+        </tbody>
+      </table>
+      <p>总分 17 : 17。拯救派不会还手，猜疑链只走一步就断了。代价是它碰上清理者会被一直欺负，见例 F。</p>
+
+      <h4>例 F：拯救派遇到清理者</h4>
+      <p>你选 #3 拯救派，对方选 #4 清理者，没有干扰。你每轮都交流，对方每轮都打击，6 轮下来 0 : 30。被打击时读心也没用，读出来全是真打击，每次还要扣 1 分。所以，选拯救派就是在赌对手善良。</p>
+
+      <h4>例 G：执剑人遇到逆行者</h4>
+      <p>你选 #1 执剑人，对方选 #2 逆行者，没有干扰。</p>
+      <table class="log">
+        <thead><tr><th scope="col">轮</th><th scope="col">你</th><th scope="col">对方</th><th scope="col">得分</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td class="coop">交流</td><td class="attack">打击</td><td>0 : 5</td></tr>
+          <tr><td>2</td><td class="attack">打击</td><td class="attack">打击</td><td>1 : 1</td></tr>
+          <tr><td>3</td><td class="attack">打击</td><td class="coop">交流</td><td>5 : 0</td></tr>
+          <tr><td>4</td><td class="coop">交流</td><td class="coop">交流</td><td>3 : 3</td></tr>
+          <tr><td>5～6</td><td colspan="2">重复第 1～2 轮</td><td>1 : 6</td></tr>
+        </tbody>
+      </table>
+      <p>总分 10 : 15。双方每 4 轮一个循环，逆行者在循环里占便宜。注意：逆行者的打击都是本意，读心只会白花钱。</p>
+
+      <h4>例 H：清理者遇到执剑人</h4>
+      <p>你选 #4 清理者，对方选 #1 执剑人，没有干扰。第 1 轮你偷袭得手 5 : 0，之后执剑人一直还手，每轮 1 : 1。6 轮下来 10 : 5，你赢了，可总分只有 10。如果双方都选执剑人和平相处，各有 18 分。清理者赢得了对局，却让自己的文明更穷。</p>
+    </dialog>
+  </main>
+  <script type="module" src="/web/app.js"></script>
+</body>
+</html>
