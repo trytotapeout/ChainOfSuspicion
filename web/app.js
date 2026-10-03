@@ -50,7 +50,7 @@ function renderCircuits() {
     `<div class="circuit-card">
       <button type="button" class="circuit custom-brain" data-custom aria-haspopup="dialog">
         <div class="name">#5 设计你的大脑</div>
-        <div class="meta">电路：三位输入 · 敬请期待</div>
+        <div class="meta">参考 3 位输入电路逻辑</div>
         <div class="desc">看得更远、记得更多的三体大脑。点击查看设计方法。</div>
       </button>
     </div>`;
