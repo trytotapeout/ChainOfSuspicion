@@ -172,6 +172,6 @@ To design your own 3-input brain, start with [BRAIN_SPEC.md](BRAIN_SPEC.md).
 
 ## License
 
-This project is open source under the [GNU General Public License v3.0](LICENSE) (GPL-3.0). You may use, modify and distribute it freely; if you distribute a modified version (including deploying a modified web page for others to use), you must release its source code under GPL-3.0 as well.
+This project is open source under the [GNU General Public License v3.0](LICENSE) or any later version (GPL-3.0-or-later). You may use, modify and distribute it freely; if you distribute a modified version (including deploying a modified web page for others to use), you must release its source code under GPL-3.0 or a later version as well. “Or later” means that when the Free Software Foundation publishes a new version of the GPL, you may also choose to follow its terms.
 
 The license covers only the code and docs in this repository. Ownership of the on-chain circuit NFTs is determined by on-chain holdings, and the names and setting from *The Three-Body Problem* belong to their original author; this project is a fan tribute.
