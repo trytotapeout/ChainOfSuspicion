@@ -94,7 +94,7 @@ npm start              # local server: http://localhost:5173/web/ (change the po
 npm test               # unit tests
 npm run verify-chain   # online check: run all 4 brains' truth tables through on-chain eval and compare with the local simulation
 npm run simulate       # batch-simulate every brain matchup to tune balance
-npm run build          # build into docs/ for GitHub Pages
+npm run build          # build into github_pages/ for GitHub Pages
 npm run preview        # build, then preview the result at http://localhost:5173/ChainOfSuspicion/
 ```
 
@@ -108,15 +108,15 @@ You can choose “Local simulation (offline)” at the start: the circuits are t
 
 ### Publishing to GitHub Pages
 
-Browsers load native ES modules directly, so “building” just copies `web/` and `src/` into `docs/` as they are and lifts the entry page to `docs/index.html`. All paths in the page are relative, so it works under a sub-path such as `https://<user>.github.io/ChainOfSuspicion/`. `docs/.nojekyll` tells GitHub Pages to skip Jekyll processing.
+Browsers load native ES modules directly, so “building” just copies `web/` and `src/` into `github_pages/` as they are and lifts the entry page to `github_pages/index.html`. All paths in the page are relative, so it works under a sub-path such as `https://<user>.github.io/ChainOfSuspicion/`. `github_pages/.nojekyll` tells GitHub Pages to skip Jekyll processing.
 
-1. After changing code, run `npm run build` and commit and push the updated `docs/` along with it.
-2. In the GitHub repository go to Settings → Pages → Build and deployment, set Source to “Deploy from a branch”, choose the `main` branch and the `/docs` folder, and save.
-3. A few minutes later, open https://trytotapeout.github.io/ChainOfSuspicion/ .
+1. After changing code, run `npm run build` and commit and push the updated `github_pages/` along with it.
+2. On push to `main`, GitHub Actions (`.github/workflows/pages.yml`) publishes `github_pages/` to Pages. In Settings → Pages, Source must be “GitHub Actions”.
+3. A minute or two later, open https://trytotapeout.github.io/ChainOfSuspicion/ .
 
 GitHub Pages is enabled only on the main repository [trytotapeout/ChainOfSuspicion](https://github.com/trytotapeout/ChainOfSuspicion) (public), not on the backup.
 
-`docs/` is generated output; do not edit it by hand. Change the source and run `npm run build` again.
+`github_pages/` is generated output; do not edit it by hand. Change the source and run `npm run build` again.
 
 ### Layout
 
@@ -143,7 +143,7 @@ web/                   browser UI (plain HTML / CSS / JS modules)
   brainviz.js          brain cards: wireframe brain + on-chain NAND netlist, signals propagate on hover / select
   eraviz.js            era cards: sky, thermometer, light gauge (flavor only, not scored)
 scripts/               local server, build, batch simulation, on-chain check
-docs/                  output of npm run build, published by GitHub Pages (generated, do not edit)
+github_pages/          output of npm run build, published to Pages by GitHub Actions (generated, do not edit)
 test/                  unit tests (node:test)
 BRAIN_SPEC.md          interface spec and admission checks for player-designed brains (future work; in Chinese)
 ```
@@ -165,7 +165,7 @@ Help make Chain of Suspicion better: bug fixes, new brains and eras, balance tun
 Before opening a PR:
 
 1. `npm test` passes; if you touched circuit logic, also run `npm run verify-chain`.
-2. If you changed the UI, run `npm run build` and commit the updated `docs/` too.
+2. If you changed the UI, run `npm run build` and commit the updated `github_pages/` too.
 3. Any new UI text exists in both `web/i18n/zh.js` and `en.js`.
 
 To design your own 3-input brain, start with [BRAIN_SPEC.md](BRAIN_SPEC.md).

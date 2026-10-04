@@ -6,13 +6,13 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
-const docs = join(root, 'docs');
+const out = join(root, 'github_pages');
 
-test('npm run build 产出 GitHub Pages 可用的 docs/', () => {
+test('npm run build 产出 GitHub Pages 可用的 github_pages/', () => {
   execFileSync(process.execPath, [join(root, 'scripts/build.js')], { stdio: 'pipe' });
-  for (const f of ['index.html', '404.html', '.nojekyll', 'web/app.js', 'web/style.css', 'src/engine.js']) assert.ok(existsSync(join(docs, f)), `缺少 docs/${f}`);
-  assert.ok(!existsSync(join(docs, 'web/index.html')), '入口应该只在 docs/index.html');
-  const html = readFileSync(join(docs, 'index.html'), 'utf8');
+  for (const f of ['index.html', '404.html', '.nojekyll', 'web/app.js', 'web/style.css', 'src/engine.js']) assert.ok(existsSync(join(out, f)), `缺少 github_pages/${f}`);
+  assert.ok(!existsSync(join(out, 'web/index.html')), '入口应该只在 github_pages/index.html');
+  const html = readFileSync(join(out, 'index.html'), 'utf8');
   assert.match(html, /href="\.\/web\/style\.css"/);
   assert.match(html, /src="\.\/web\/app\.js"/);
   // 不能有以 / 开头的绝对路径，否则部署在 /ChainOfSuspicion/ 子路径下会 404
@@ -31,7 +31,7 @@ test('打包后所有相对 import 都能找到文件', () => {
       else missing.push(`${file} -> ${m[1]}`);
     }
   };
-  walk(join(docs, 'web/app.js'));
+  walk(join(out, 'web/app.js'));
   assert.deepEqual(missing, []);
   assert.ok(seen.size > 15);
 });

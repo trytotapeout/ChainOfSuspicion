@@ -95,7 +95,7 @@ npm start              # 启动本地服务器：http://localhost:5173/web/（�
 npm test               # 运行单元测试
 npm run verify-chain   # 联网核对：用链上 eval 跑 4 个大脑的真值表，和本地模拟对比
 npm run simulate       # 批量模拟各大脑两两对战的平均得分，用来调平衡
-npm run build          # 打包到 docs/，用于 GitHub Pages 发布
+npm run build          # 打包到 github_pages/，用于 GitHub Pages 发布
 npm run preview        # 打包后在 http://localhost:5173/ChainOfSuspicion/ 预览打包结果
 ```
 
@@ -109,15 +109,15 @@ npm run preview        # 打包后在 http://localhost:5173/ChainOfSuspicion/ �
 
 ### 发布到 GitHub Pages
 
-浏览器直接加载原生 ES module，所以“打包”只是把 `web/` 和 `src/` 原样复制到 `docs/`，入口页提到 `docs/index.html`。页面里的路径都是相对路径，部署在 `https://<用户>.github.io/ChainOfSuspicion/` 这种子路径下也能用。`docs/.nojekyll` 让 GitHub Pages 跳过 Jekyll 处理。
+浏览器直接加载原生 ES module，所以“打包”只是把 `web/` 和 `src/` 原样复制到 `github_pages/`，入口页提到 `github_pages/index.html`。页面里的路径都是相对路径，部署在 `https://<用户>.github.io/ChainOfSuspicion/` 这种子路径下也能用。`github_pages/.nojekyll` 让 GitHub Pages 跳过 Jekyll 处理。
 
-1. 改完代码后运行 `npm run build`，把更新后的 `docs/` 一起提交推送。
-2. GitHub 仓库 Settings → Pages → Build and deployment → Source 选 “Deploy from a branch”，分支选 `main`，目录选 `/docs`，保存。
-3. 几分钟后访问 https://trytotapeout.github.io/ChainOfSuspicion/ 。
+1. 改完代码后运行 `npm run build`，把更新后的 `github_pages/` 一起提交推送。
+2. 推送到 `main` 后，GitHub Actions（`.github/workflows/pages.yml`）会自动把 `github_pages/` 发布到 Pages。仓库 Settings → Pages 的 Source 要选 “GitHub Actions”。
+3. 一两分钟后访问 https://trytotapeout.github.io/ChainOfSuspicion/ 。
 
 GitHub Pages 只在主仓库 [trytotapeout/ChainOfSuspicion](https://github.com/trytotapeout/ChainOfSuspicion)（公开）上开启，备份仓库不开。
 
-`docs/` 是生成目录，不要手动修改，改源码后重新运行 `npm run build`。
+`github_pages/` 是生成目录，不要手动修改，改源码后重新运行 `npm run build`。
 
 ### 目录结构
 
@@ -144,7 +144,7 @@ web/                   浏览器界面（原生 HTML / CSS / JS 模块）
   brainviz.js          大脑卡片：线框大脑 + 链上 NAND 网表，悬停 / 选中时信号逐门传播
   eraviz.js            纪元卡片：天空、温度计、光照条（只营造氛围，不影响计分）
 scripts/               本地服务器、打包、批量模拟、链上核对
-docs/                  npm run build 的输出，GitHub Pages 从这里发布（生成目录，不要手改）
+github_pages/          npm run build 的输出，GitHub Actions 把它发布到 Pages（生成目录，不要手改）
 test/                  单元测试（node:test）
 BRAIN_SPEC.md          玩家自定义大脑的接口规范和准入检查（后续扩展）
 ```
@@ -166,7 +166,7 @@ evaluate(circuitId, input) → Promise<0 | 1>
 提 PR 前请确认：
 
 1. `npm test` 全部通过；改了电路相关逻辑的，再跑一次 `npm run verify-chain`。
-2. 改了界面的，运行 `npm run build`，把更新后的 `docs/` 一起提交。
+2. 改了界面的，运行 `npm run build`，把更新后的 `github_pages/` 一起提交。
 3. 新增的界面文字在 `web/i18n/zh.js` 和 `en.js` 里都要有。
 
 想设计自己的三位输入大脑，可以先读 [BRAIN_SPEC.md](BRAIN_SPEC.md)。

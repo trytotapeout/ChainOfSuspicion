@@ -11,7 +11,7 @@
     "simulate": "node scripts/simulate.js",
     "verify-chain": "node scripts/verify-chain.js",
     "build": "node scripts/build.js",
-    "preview": "npm run build && node scripts/serve.js --docs"
+    "preview": "npm run build && node scripts/serve.js --pages"
   },
   "engines": {
     "node": ">=18"
