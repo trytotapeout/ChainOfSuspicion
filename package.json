@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "猜疑链：4 个三体人大脑电路已在 X Layer 上通过 TapeOut 流片，游戏通过链上 eval 计算",
+  "license": "GPL-3.0-only",
   "type": "module",
   "scripts": {
     "start": "node scripts/serve.js",

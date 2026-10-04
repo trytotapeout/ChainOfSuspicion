@@ -157,3 +157,21 @@ evaluate(circuitId, input) → Promise<0 | 1>
 ```
 
 Switching the circuit source, for example to circuits taped out by players, only needs a new evaluator; scoring, interference, mind-reading and the UI stay the same. The interface and admission rules for player-designed brains are in [BRAIN_SPEC.md](BRAIN_SPEC.md).
+
+## Contributing
+
+Help make Chain of Suspicion better: bug fixes, new brains and eras, balance tuning, UI and copy improvements, translations — open a PR against [trytotapeout/ChainOfSuspicion](https://github.com/trytotapeout/ChainOfSuspicion). Feel free to open an Issue first to discuss ideas.
+
+Before opening a PR:
+
+1. `npm test` passes; if you touched circuit logic, also run `npm run verify-chain`.
+2. If you changed the UI, run `npm run build` and commit the updated `docs/` too.
+3. Any new UI text exists in both `web/i18n/zh.js` and `en.js`.
+
+To design your own 3-input brain, start with [BRAIN_SPEC.md](BRAIN_SPEC.md).
+
+## License
+
+This project is open source under the [GNU General Public License v3.0](LICENSE) (GPL-3.0). You may use, modify and distribute it freely; if you distribute a modified version (including deploying a modified web page for others to use), you must release its source code under GPL-3.0 as well.
+
+The license covers only the code and docs in this repository. Ownership of the on-chain circuit NFTs is determined by on-chain holdings, and the names and setting from *The Three-Body Problem* belong to their original author; this project is a fan tribute.

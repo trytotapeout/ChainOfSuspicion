@@ -158,3 +158,21 @@ evaluate(circuitId, input) → Promise<0 | 1>
 ```
 
 更换电路来源（比如接入玩家自己流片的电路）只需要新增一个 evaluator，计分、干扰、读心和界面都不用改。玩家自定义大脑的接口和准入规则见 [BRAIN_SPEC.md](BRAIN_SPEC.md)。
+
+## 参与共建
+
+欢迎一起把猜疑链做得更好：修 bug、加新的大脑和纪元、调平衡、改进界面和文案、补翻译，都可以直接提 PR 到 [trytotapeout/ChainOfSuspicion](https://github.com/trytotapeout/ChainOfSuspicion)。也欢迎先开 Issue 聊想法。
+
+提 PR 前请确认：
+
+1. `npm test` 全部通过；改了电路相关逻辑的，再跑一次 `npm run verify-chain`。
+2. 改了界面的，运行 `npm run build`，把更新后的 `docs/` 一起提交。
+3. 新增的界面文字在 `web/i18n/zh.js` 和 `en.js` 里都要有。
+
+想设计自己的三位输入大脑，可以先读 [BRAIN_SPEC.md](BRAIN_SPEC.md)。
+
+## 开源协议
+
+本项目以 [GNU General Public License v3.0](LICENSE)（GPL-3.0）开源。你可以自由使用、修改和分发；分发修改后的版本（包括把改过的网页部署给别人访问）时，需要同样以 GPL-3.0 公开源代码。
+
+协议只覆盖本仓库的代码和文档。链上电路 NFT 的归属由链上持有权决定；《三体》相关的名称与设定版权归原作者所有，本项目是致敬性质的同人作品。
