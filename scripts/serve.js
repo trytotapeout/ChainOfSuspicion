@@ -12,7 +12,7 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const port = Number(process.env.PORT ?? 5173);
 const pagesMode = process.argv.includes('--pages');
 const BASE = '/ChainOfSuspicion/';
-const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' };
+const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png' };
 
 // 请求路径 → 磁盘上的相对路径；返回 null 表示不允许访问
 function resolve(path) {

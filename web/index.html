@@ -4,6 +4,19 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>猜疑链 · MVP</title>
+  <meta name="description" content="三体人的大脑是 X Layer 上的真实电路，每一步都是链上计算。智子会操控大脑，你能看穿吗？" />
+  <!-- 链接预览卡片：X、Telegram 等展开链接时显示。og:image 必须是完整网址 -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="猜疑链 Chain of Suspicion" />
+  <meta property="og:description" content="三体人的大脑是 X Layer 上的真实电路，每一步都是链上计算。智子会操控大脑，你能看穿吗？" />
+  <meta property="og:url" content="https://trytotapeout.github.io/ChainOfSuspicion/" />
+  <meta property="og:image" content="https://trytotapeout.github.io/ChainOfSuspicion/web/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="猜疑链 Chain of Suspicion" />
+  <meta name="twitter:description" content="三体人的大脑是 X Layer 上的真实电路，每一步都是链上计算。智子会操控大脑，你能看穿吗？" />
+  <meta name="twitter:image" content="https://trytotapeout.github.io/ChainOfSuspicion/web/og.png" />
   <link rel="stylesheet" href="./style.css" />
 </head>
 <body>
@@ -99,9 +112,12 @@
           <canvas id="share-canvas" class="share-canvas" role="img" data-i18n-aria="share.caption" aria-label="战报"></canvas>
           <p id="share-text" class="share-text"></p>
           <div class="actions">
+            <a id="btn-share-x" class="btn-x" target="_blank" rel="noopener noreferrer" data-i18n="share.x">分享到 X</a>
+            <button id="btn-share-native" type="button" data-i18n="share.native" hidden>分享图片和文字</button>
             <button id="btn-share-download" type="button" data-i18n="share.download">下载战报图片</button>
             <button id="btn-share-copy" type="button" data-i18n="share.copy">复制战报文字</button>
           </div>
+          <p class="share-hint" data-i18n="share.hint"></p>
         </div>
       </div>
       <p id="result-summary" class="prompt"></p>

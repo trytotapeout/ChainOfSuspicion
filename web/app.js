@@ -625,9 +625,29 @@ function shareText(d) {
 function renderShare() {
   const d = shareData();
   drawShareCard($('share-canvas'), d);
-  $('share-text').textContent = shareText(d);
+  const text = shareText(d);
+  $('share-text').textContent = text;
   $('btn-share-copy').textContent = t('share.copy');
+  // X 网页发推链接：文字和网址分开传，X 会把网址算作 23 个字符并展开成预览卡片
+  const intent = new URL('https://x.com/intent/post');
+  intent.searchParams.set('text', text.replace(` https://${SITE_URL}/`, ''));
+  intent.searchParams.set('url', `https://${SITE_URL}/`);
+  $('btn-share-x').href = intent.href;
+  // 系统分享（主要是手机）：能带上战报图片，可以直接选 X App
+  $('btn-share-native').hidden = !(navigator.canShare && navigator.canShare({ files: [new File([''], 'x.png', { type: 'image/png' })] }));
 }
+
+$('btn-share-native').addEventListener('click', () => {
+  $('share-canvas').toBlob(async (blob) => {
+    if (!blob) return;
+    const file = new File([blob], `chain-of-suspicion-${seed}.png`, { type: 'image/png' });
+    try {
+      await navigator.share({ files: [file], text: $('share-text').textContent });
+    } catch {
+      // 用户取消分享，或者系统不支持：什么都不做
+    }
+  }, 'image/png');
+});
 
 $('btn-share').addEventListener('click', () => {
   $('share-panel').hidden = false;
