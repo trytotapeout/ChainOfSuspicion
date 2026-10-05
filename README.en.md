@@ -40,7 +40,7 @@ In a single round striking always scores more, but if everyone strikes, everyone
 
 Each round, each side has a chance of being hijacked by the sophons: its brain is temporarily replaced by #4 Cleaner and strikes against its will. The circuits themselves are always honest; the lie happens only in the game’s scheduling layer. You are told when your own brain is interfered with; whether the opponent was interfered with is revealed only after the match.
 
-A single misunderstanding can trigger endless retaliation. That is the chain of suspicion.
+A single misunderstanding can trigger endless retaliation. That is the chain of suspicion. The match screen draws it as a real chain: one link per round, intact when both cooperate, cracked when one side strikes, split when both strike, and welded when mind-reading catches the sophons. The opponent brain is a face-down card that flips over after the match.
 
 ### Mind-reading
 
@@ -130,6 +130,7 @@ src/
   version.js           version number (kept equal to package.json)
   rng.js               reproducible PRNG (the same seed gives the same interference plan)
   netlist.js           simulates a circuit from its on-chain netlist (gate format in the file comments)
+  chain.js             chain of suspicion: link state per round, where the chain started
   commit.js            pre-match commitment: preimage and hash, tx data encoding, post-match verification
   keccak.js            dependency-free keccak256 in plain JS
   threebody.js         three-body numerical simulation (leapfrog integrator) for the background
@@ -142,6 +143,7 @@ web/                   browser UI (plain HTML / CSS / JS modules)
   starfield.js         background: Canvas rendering of the live three-body simulation, follows the era
   brainviz.js          brain cards: wireframe brain + on-chain NAND netlist, signals propagate on hover / select
   eraviz.js            era cards: sky, thermometer, light gauge (flavor only, not scored)
+  chainviz.js          chain of suspicion: one link per round, intact / welded / cracked / split
 scripts/               local server, build, batch simulation, on-chain check
 github_pages/          output of npm run build, published to Pages by GitHub Actions (generated, do not edit)
 test/                  unit tests (node:test)

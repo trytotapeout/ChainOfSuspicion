@@ -209,3 +209,71 @@ a { color: var(--accent); }
   h1 { font-size: 28px; letter-spacing: 3px; }
   .head-actions button { padding: 8px 12px; font-size: 15px; }
 }
+
+/* ===== 猜疑链 ===== */
+.chain-box { margin: 14px 0; padding: 10px 14px 6px; border-radius: 10px; background: var(--glass); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); border: 1px solid var(--glass-edge); }
+.chain-title { margin: 0 0 4px; font-size: 15px; color: var(--muted); letter-spacing: 2px; }
+.chainviz { width: 100%; max-height: 64px; display: block; overflow: visible; }
+.cv-ring { fill: none; stroke-width: 3.2; }
+.cv-round { fill: var(--muted); font-size: 9px; text-anchor: middle; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.cv-joint { fill: none; stroke: rgba(255, 255, 255, 0.25); stroke-width: 2.4; }
+.cv-pending .cv-ring { stroke: rgba(255, 255, 255, 0.18); stroke-dasharray: 3 4; }
+.cv-intact .cv-ring { stroke: #f0b84b; filter: drop-shadow(0 0 3px rgba(240, 184, 75, 0.6)); }
+.cv-mended .cv-ring { stroke: #f0b84b; }
+.cv-weld { fill: none; stroke: #5ff0d0; stroke-width: 2.6; stroke-linecap: round; filter: drop-shadow(0 0 4px #5ff0d0); }
+.cv-cracked .cv-ring { stroke: #b98a4a; }
+.cv-crack { fill: none; stroke: var(--attack); stroke-width: 2.4; stroke-linecap: round; filter: drop-shadow(0 0 4px var(--attack)); }
+.cv-broken .cv-ring { stroke: var(--attack); filter: drop-shadow(0 0 4px var(--attack)); }
+.cv-broken .cv-half-l { transform: translate(-2px, 2px) rotate(-6deg); transform-box: fill-box; transform-origin: right center; }
+.cv-broken .cv-half-r { transform: translate(2px, -2px) rotate(6deg); transform-box: fill-box; transform-origin: left center; }
+.cv-broken .cv-round, .cv-cracked .cv-round { fill: #ffb3b3; }
+/* 刚结算的一环 */
+.cv-new.cv-intact .cv-ring { animation: cv-glow 0.8s ease-out; }
+.cv-new .cv-crack { stroke-dasharray: 40; stroke-dashoffset: 40; animation: cv-draw 0.45s ease-out forwards; }
+.cv-new .cv-weld { stroke-dasharray: 40; stroke-dashoffset: 40; animation: cv-draw 0.6s ease-out forwards; }
+.cv-new.cv-broken .cv-half-l { animation: cv-split-l 0.5s ease-out; }
+.cv-new.cv-broken .cv-half-r { animation: cv-split-r 0.5s ease-out; }
+.cv-new.cv-cracked, .cv-new.cv-broken { animation: cv-shake 0.4s ease-out; transform-box: fill-box; transform-origin: center; }
+@keyframes cv-glow { from { stroke-width: 6; filter: drop-shadow(0 0 10px #f0b84b); } }
+@keyframes cv-draw { to { stroke-dashoffset: 0; } }
+@keyframes cv-split-l { from { transform: none; } }
+@keyframes cv-split-r { from { transform: none; } }
+@keyframes cv-shake { 20% { transform: translateX(-2px); } 40% { transform: translateX(2px); } 60% { transform: translateX(-1px); } }
+.chain-story { margin: 6px 0 2px; font-size: 15px; color: #c9ced8; }
+.chain-legend { margin: 2px 0 4px; font-size: 13px; color: var(--muted); }
+
+/* ===== 对手卡牌 ===== */
+.arena { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: stretch; }
+.opp-card { --brain: var(--accent); perspective: 900px; padding: 0; border: none; background: none; cursor: pointer; width: 220px; min-height: 300px; display: block; flex-shrink: 0; text-align: center; }
+.opp-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 14px; }
+.opp-inner { position: relative; display: block; width: 100%; height: 100%; min-height: 300px; transform-style: preserve-3d; transition: transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.opp-card.flipped .opp-inner { transform: rotateY(180deg); }
+.opp-face { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 14px; border-radius: 14px; backface-visibility: hidden; -webkit-backface-visibility: hidden; border: 2px solid var(--glass-edge); background: var(--glass-strong); backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur); }
+.opp-back { background: repeating-linear-gradient(45deg, rgba(240, 184, 75, 0.08) 0 6px, transparent 6px 14px), radial-gradient(circle at 50% 40%, #2a2140, #10131c 70%); border-color: rgba(240, 184, 75, 0.45); }
+.opp-mark { font-size: 64px; font-weight: 800; color: var(--accent); text-shadow: 0 0 18px rgba(240, 184, 75, 0.7); animation: opp-pulse 2.4s ease-in-out infinite; }
+.opp-back-title { font-weight: 700; font-size: 17px; }
+.opp-back-hint { font-size: 13px; color: var(--muted); }
+.opp-front { transform: rotateY(180deg); border-color: var(--brain); box-shadow: 0 0 26px -6px var(--brain); }
+.opp-front .brainviz { margin: 0; }
+.opp-name { font-size: 20px; font-weight: 700; color: var(--brain); }
+.opp-gate, .opp-desc { font-size: 14px; color: var(--muted); }
+@keyframes opp-pulse { 50% { opacity: 0.55; transform: scale(0.94); } }
+
+/* 对局中的小卡背：只是提示对方藏着一张牌 */
+.opp-mini { width: 92px; min-height: 0; cursor: default; }
+.opp-mini .opp-face { position: relative; inset: auto; height: 100%; min-height: 96px; padding: 8px; }
+.opp-mini .opp-mark { font-size: 36px; }
+.opp-mini .opp-back-title { font-size: 12px; }
+
+.reveal-row { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: start; margin: 12px 0; }
+.reveal-side .chain-box { margin-top: 0; }
+
+@media (max-width: 640px) {
+  .reveal-row { grid-template-columns: 1fr; justify-items: center; }
+  .reveal-side { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .opp-inner { transition: none; }
+  .opp-mark, .cv-new, .cv-new * { animation: none !important; }
+  .cv-new .cv-crack, .cv-new .cv-weld { stroke-dashoffset: 0; }
+}

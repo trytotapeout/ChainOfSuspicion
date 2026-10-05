@@ -43,9 +43,18 @@
 
     <section id="game" hidden aria-labelledby="game-title">
       <h2 id="game-title"><span id="era-name" class="era-tag"></span> <span id="round-label"></span></h2>
-      <div class="scoreboard">
-        <div><span class="label" id="my-label"></span><span id="my-score" class="score">0</span></div>
-        <div><span class="label" data-i18n="game.opponent">对方（未知）</span><span id="ai-score" class="score">0</span></div>
+      <div class="arena">
+        <div class="scoreboard">
+          <div><span class="label" id="my-label"></span><span id="my-score" class="score">0</span></div>
+          <div><span class="label" data-i18n="game.opponent">对方（未知）</span><span id="ai-score" class="score">0</span></div>
+        </div>
+        <div class="opp-card opp-mini" aria-hidden="true">
+          <div class="opp-face opp-back"><span class="opp-mark">?</span><span class="opp-back-title" data-i18n="card.back">对方的大脑</span></div>
+        </div>
+      </div>
+      <div class="chain-box">
+        <h3 class="chain-title" data-i18n="chain.title">猜疑链</h3>
+        <div id="chain-viz"></div>
       </div>
       <div id="prompt" class="prompt" aria-live="polite"></div>
       <div id="actions" class="actions"></div>
@@ -59,6 +68,22 @@
     <section id="result" hidden aria-labelledby="result-title">
       <h2 id="result-title" data-i18n="result.title">相遇结束</h2>
       <p id="result-fate" class="fate"></p>
+      <div class="reveal-row">
+        <button type="button" id="opp-card" class="opp-card" aria-pressed="false">
+          <span class="opp-inner">
+            <span class="opp-face opp-back"><span class="opp-mark">?</span><span class="opp-back-title" data-i18n="card.back">对方的大脑</span><span class="opp-back-hint" data-i18n="card.back.hint">对局中保密，赛后翻开</span></span>
+            <span class="opp-face opp-front" id="opp-front"></span>
+          </span>
+        </button>
+        <div class="reveal-side">
+          <div class="chain-box">
+            <h3 class="chain-title" data-i18n="chain.title">猜疑链</h3>
+            <div id="result-chain"></div>
+            <p id="chain-story" class="chain-story"></p>
+            <p class="chain-legend" data-i18n="chain.legend"></p>
+          </div>
+        </div>
+      </div>
       <p id="result-summary" class="prompt"></p>
       <table class="log">
         <caption data-i18n="reveal.caption">赛后公开：干扰计划</caption>

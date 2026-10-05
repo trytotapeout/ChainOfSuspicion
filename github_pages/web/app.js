@@ -13,6 +13,8 @@ import { t, getLang, setLang, onLangChange, applyStatic, circuitText, eraText } 
 import { designGuideHtml } from './i18n/guide.js';
 import { brainSvg, startThinking } from './brainviz.js';
 import { eraSkyHtml } from './eraviz.js';
+import { chainSvg } from './chainviz.js';
+import { linkState, chainSummary } from '../src/chain.js';
 
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -334,6 +336,7 @@ function startMatch() {
   roundNo = 1;
   matchStarted = true;
   updateEvaluatorStatus();
+  renderChain();
   // 玩家是 A，电脑是 B
   match = createMatch({ circuits: { A: selected, B: aiCircuit }, evaluator, seed, config });
   renderGameHeader();
@@ -445,6 +448,7 @@ function renderResolve(r) {
   aiPolicy.learn(r.readResult.B);
   logRows.push(r);
   renderLog();
+  renderChain(true);
   $('my-score').textContent = r.totals.A;
   $('ai-score').textContent = r.totals.B;
   setView(() => {
@@ -457,6 +461,19 @@ function renderResolve(r) {
     $('prompt').innerHTML = `${summary}${notes.length ? '<br>' + notes.join('<br>') : ''}`;
     if (match.isOver) setActions([{ label: t('btn.result'), cls: 'primary', onClick: showResult }]);
     else setActions([{ label: t('btn.next'), cls: 'primary', onClick: nextRound }]);
+  });
+}
+
+// 对局中的猜疑链：已结算的轮次画成链环，没打的轮次是虚线。animate 为真时最新一环播放动画。
+function renderChain(animate = false) {
+  const total = era ? eraConfig(era.era).rounds : 10;
+  const states = logRows.map(linkState);
+  const broken = states.filter((s) => s === 'cracked' || s === 'broken').length;
+  $('chain-viz').innerHTML = chainSvg({
+    states,
+    total,
+    newIndex: animate && !reduceMotion.matches ? states.length - 1 : -1,
+    aria: t('chain.aria', { total: states.length, intact: states.length - broken, broken }),
   });
 }
 
@@ -479,10 +496,12 @@ function showResult() {
   destroyedThisMatch = starfield.destroyed - destroyedAtStart;
   if (era.hidden) starfield.setMode(era.era.id);
   view = null;
+  setOppFlipped(false);
   renderResult();
   renderCommitBox();
   show('result');
   $('btn-again').focus();
+  setTimeout(() => setOppFlipped(true), reduceMotion.matches ? 0 : 700);
 }
 
 function renderResult() {
@@ -501,7 +520,43 @@ function renderResult() {
     .map((r, i) => `<tr><td>${r.round}</td><td>${plan[i].A ? yes : t('reveal.no')}</td><td>${plan[i].B ? yes : t('reveal.no')}</td><td>${actionText(r.finalAction.A)} : ${actionText(r.finalAction.B)}</td></tr>`)
     .join('');
   $('seed').textContent = seed;
+  renderResultChain();
+  renderOppCard();
 }
+
+function renderResultChain() {
+  const s = chainSummary(match.history);
+  const broken = s.states.filter((x) => x === 'cracked' || x === 'broken').length;
+  $('result-chain').innerHTML = chainSvg({ states: s.states, total: s.states.length, aria: t('chain.aria', { total: s.states.length, intact: s.intact, broken }) });
+  const story = [s.firstCrackRound ? t('chain.started', { round: s.firstCrackRound, run: s.longestRun }) : t('chain.calm')];
+  if (s.mended) story.push(t('chain.mended', { n: s.mended }));
+  $('chain-story').textContent = story.join(' ');
+}
+
+// 对手卡牌：正面是对方的大脑（会思考的电路），赛后自动翻开，点击可以来回翻。
+let oppThinking = null;
+function renderOppCard() {
+  const ai = circuitText(aiCircuit);
+  const label = brainLabel(ai.id);
+  const gates = ai.netlist.length;
+  $('opp-front').className = `opp-face opp-front brain-${ai.id}`;
+  $('opp-front').innerHTML = `${brainSvg(ai, { aria: t('viz.brain.aria', { name: label, gates }), gates: t('viz.gates', { gates }) })}
+    <span class="opp-name">${label}</span>
+    <span class="opp-gate">${t('card.gate', { gate: ai.gate })}</span>
+    <span class="opp-desc">${ai.desc}</span>`;
+  oppThinking?.();
+  oppThinking = startThinking($('opp-front').querySelector('.brainviz'), getCircuit(ai.id), reduceMotion.matches);
+  setOppFlipped($('opp-card').classList.contains('flipped'));
+}
+
+function setOppFlipped(flipped) {
+  const card = $('opp-card');
+  card.classList.toggle('flipped', flipped);
+  card.setAttribute('aria-pressed', String(flipped));
+  card.setAttribute('aria-label', flipped ? t('card.revealed', { brain: brainLabel(aiCircuit) }) : t('card.reveal'));
+}
+
+$('opp-card').addEventListener('click', () => setOppFlipped(!$('opp-card').classList.contains('flipped')));
 
 function renderCommitBox() {
   $('commit-box').hidden = !commitTx;
@@ -546,7 +601,11 @@ $('btn-verify-commit').addEventListener('click', async () => {
   renderVerdict();
 });
 
-$('btn-again').addEventListener('click', () => show('setup'));
+$('btn-again').addEventListener('click', () => {
+  oppThinking?.();
+  oppThinking = null;
+  show('setup');
+});
 
 function updateWalletStatus() {
   const el = $('wallet-status');
@@ -596,6 +655,7 @@ onLangChange(() => {
     renderOpenDialog();
     if (era) renderGameHeader();
     renderLog();
+    if (matchStarted) renderChain();
     if (!$('game').hidden) view?.();
     if (!$('result').hidden) {
       renderResult();
