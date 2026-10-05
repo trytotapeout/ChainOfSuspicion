@@ -14,6 +14,7 @@
         <h1 data-i18n="app.title">猜疑链</h1>
         <div class="head-actions">
           <button id="btn-lang" type="button" data-i18n="btn.lang" data-i18n-aria="btn.lang.aria">EN</button>
+          <button id="btn-ach" type="button" aria-haspopup="dialog" aria-controls="ach-dialog"></button>
           <button id="btn-rules" type="button" aria-haspopup="dialog" aria-controls="rules" data-i18n="btn.rules">帮助 / 规则</button>
         </div>
       </div>
@@ -43,7 +44,7 @@
 
     <section id="game" hidden aria-labelledby="game-title">
       <h2 id="game-title"><span id="era-name" class="era-tag"></span> <span id="round-label"></span></h2>
-      <div class="arena">
+      <div class="arena" id="arena">
         <div class="scoreboard">
           <div><span class="label" id="my-label"></span><span id="my-score" class="score">0</span></div>
           <div><span class="label" data-i18n="game.opponent">对方（未知）</span><span id="ai-score" class="score">0</span></div>
@@ -67,6 +68,10 @@
 
     <section id="result" hidden aria-labelledby="result-title">
       <h2 id="result-title" data-i18n="result.title">相遇结束</h2>
+      <div class="title-badge" id="title-badge">
+        <span class="title-label" data-i18n="title.label">本局称号</span>
+        <span class="title-name" id="title-name"></span>
+      </div>
       <p id="result-fate" class="fate"></p>
       <div class="reveal-row">
         <button type="button" id="opp-card" class="opp-card" aria-pressed="false">
@@ -81,6 +86,21 @@
             <div id="result-chain"></div>
             <p id="chain-story" class="chain-story"></p>
             <p class="chain-legend" data-i18n="chain.legend"></p>
+          </div>
+        </div>
+      </div>
+      <div class="ach-box">
+        <h3 class="chain-title" data-i18n="ach.title">成就</h3>
+        <ul id="result-ach" class="ach-list"></ul>
+      </div>
+      <div class="share-box">
+        <button id="btn-share" type="button" class="primary" data-i18n="share.btn">分享战报</button>
+        <div id="share-panel" class="share-panel" hidden>
+          <canvas id="share-canvas" class="share-canvas" role="img" data-i18n-aria="share.caption" aria-label="战报"></canvas>
+          <p id="share-text" class="share-text"></p>
+          <div class="actions">
+            <button id="btn-share-download" type="button" data-i18n="share.download">下载战报图片</button>
+            <button id="btn-share-copy" type="button" data-i18n="share.copy">复制战报文字</button>
           </div>
         </div>
       </div>
@@ -389,6 +409,15 @@
       <h4>Example H: Cleaner against Swordholder</h4>
       <p>You pick #4 Cleaner, the opponent picks #1 Swordholder, no interference. Your surprise strike wins round 1 at 5 : 0, then the Swordholder strikes back every round at 1 : 1. After 6 rounds it is 10 : 5: you win, but with only 10 points. Had both picked Swordholder and kept the peace, each would have 18. The Cleaner wins the match and leaves its own civilization poorer.</p>
       </div>
+    </dialog>
+    <dialog id="ach-dialog" class="rules" aria-labelledby="ach-dialog-title">
+      <div class="dialog-head">
+        <h2 id="ach-dialog-title" data-i18n="ach.title">成就</h2>
+        <button type="button" class="btn-close-dialog" aria-label="关闭成就" data-i18n="btn.close" data-i18n-aria="ach.close.aria">关闭</button>
+      </div>
+      <p id="ach-progress" class="chain-story"></p>
+      <ul id="ach-all" class="ach-list ach-grid"></ul>
+      <button id="btn-ach-reset" type="button" data-i18n="ach.reset">清空成就记录</button>
     </dialog>
     <dialog id="brain-info" class="rules" aria-labelledby="brain-title">
       <div class="dialog-head">

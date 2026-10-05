@@ -42,6 +42,8 @@ Each round, each side has a chance of being hijacked by the sophons: its brain i
 
 A single misunderstanding can trigger endless retaliation. That is the chain of suspicion. The match screen draws it as a real chain: one link per round, intact when both cooperate, cracked when one side strikes, split when both strike, and welded when mind-reading catches the sophons. The opponent brain is a face-down card that flips over after the match.
 
+Each match ends with a title based on that chain (such as “Sophon Breaker” or “Dark Forest Hunter”) and unlocks achievements, 10 in total, saved in your browser. The result page can generate a 1200×630 battle report image and a ready-to-post text for X.
+
 ### Mind-reading
 
 When struck, you can spend 1 point to read the opponent’s mind: the round is re-evaluated on chain with the opponent’s original brain.
@@ -130,6 +132,7 @@ src/
   version.js           version number (kept equal to package.json)
   rng.js               reproducible PRNG (the same seed gives the same interference plan)
   netlist.js           simulates a circuit from its on-chain netlist (gate format in the file comments)
+  achievements.js      titles and achievements computed from a match
   chain.js             chain of suspicion: link state per round, where the chain started
   commit.js            pre-match commitment: preimage and hash, tx data encoding, post-match verification
   keccak.js            dependency-free keccak256 in plain JS
@@ -144,6 +147,8 @@ web/                   browser UI (plain HTML / CSS / JS modules)
   brainviz.js          brain cards: wireframe brain + on-chain NAND netlist, signals propagate on hover / select
   eraviz.js            era cards: sky, thermometer, light gauge (flavor only, not scored)
   chainviz.js          chain of suspicion: one link per round, intact / welded / cracked / split
+  sharecard.js         battle report image (Canvas, 1200×630)
+  achievements-store.js achievement records (saved in the browser)
 scripts/               local server, build, batch simulation, on-chain check
 github_pages/          output of npm run build, published to Pages by GitHub Actions (generated, do not edit)
 test/                  unit tests (node:test)

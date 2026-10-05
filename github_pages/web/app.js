@@ -15,6 +15,11 @@ import { brainSvg, startThinking } from './brainviz.js';
 import { eraSkyHtml } from './eraviz.js';
 import { chainSvg } from './chainviz.js';
 import { linkState, chainSummary } from '../src/chain.js';
+import { matchStats, titleFor, achievementsFor, ACHIEVEMENTS } from '../src/achievements.js';
+import { unlocked as unlockedAchievements, record as recordAchievements, clearAll as clearAchievements } from './achievements-store.js';
+import { drawShareCard } from './sharecard.js';
+
+const SITE_URL = 'trytotapeout.github.io/ChainOfSuspicion';
 
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -381,6 +386,8 @@ function nextRound() {
 function renderRound({ round, observed, self }) {
   roundNo = round;
   renderGameHeader();
+  if (observed.B === ATTACK) fx($('arena'), 'fx-hit', 500);
+  if (self.A.interfered && self.A.intended !== observed.A) fx(document.body, 'fx-glitch', 700);
   const canRead = match.config.allowRead;
   // 电脑是否读心在这里决定一次；下面的显示函数可以因切换语言重复调用，不能再问 AI。
   const aiReads = canRead && aiPolicy.shouldRead(observed.A);
@@ -441,6 +448,7 @@ async function readMind(round, aiReads) {
 }
 
 function resolve(reads) {
+  if (reads.A) fx(document.querySelector('#game .opp-mini'), 'fx-scan', 1200);
   return runStep(reads.A ? 'step.read' : 'step.resolve', async () => renderResolve(await match.resolveRound(reads)));
 }
 
@@ -449,6 +457,9 @@ function renderResolve(r) {
   logRows.push(r);
   renderLog();
   renderChain(true);
+  floatScore($('my-score'), r.score.A);
+  floatScore($('ai-score'), r.score.B);
+  if (r.readResult.A === 'interference') fx(document.querySelector('#game .chain-box'), 'fx-mend', 900);
   $('my-score').textContent = r.totals.A;
   $('ai-score').textContent = r.totals.B;
   setView(() => {
@@ -462,6 +473,26 @@ function renderResolve(r) {
     if (match.isOver) setActions([{ label: t('btn.result'), cls: 'primary', onClick: showResult }]);
     else setActions([{ label: t('btn.next'), cls: 'primary', onClick: nextRound }]);
   });
+}
+
+// 打击反馈：只是视觉效果，不影响对局状态；用户开启“减少动态效果”时全部跳过。
+function fx(el, cls, ms = 600) {
+  if (reduceMotion.matches || !el) return;
+  el.classList.remove(cls);
+  void el.offsetWidth; // 重新触发同一个动画
+  el.classList.add(cls);
+  setTimeout(() => el.classList.remove(cls), ms);
+}
+
+// 在记分牌上飘出分数，比如 +5 / -1
+function floatScore(scoreEl, value) {
+  if (reduceMotion.matches || !scoreEl || value === 0) return;
+  const tag = document.createElement('span');
+  tag.className = `float-score ${value > 0 ? 'up' : 'down'}`;
+  tag.textContent = value > 0 ? `+${value}` : String(value);
+  tag.setAttribute('aria-hidden', 'true');
+  scoreEl.parentElement.appendChild(tag);
+  setTimeout(() => tag.remove(), 1100);
 }
 
 // 对局中的猜疑链：已结算的轮次画成链环，没打的轮次是虚线。animate 为真时最新一环播放动画。
@@ -497,6 +528,12 @@ function showResult() {
   if (era.hidden) starfield.setMode(era.era.id);
   view = null;
   setOppFlipped(false);
+  // 称号和成就在结算这一刻定下来；切换语言重画时只重新显示，不再重复记录
+  const stats = matchStats({ history: match.history, totals: match.totals, eraId: era.era.id, myCircuit: selected, eraHidden: era.hidden });
+  const earned = achievementsFor(stats);
+  matchResult = { stats, title: titleFor(stats), earned, fresh: recordAchievements(earned) };
+  $('share-panel').hidden = true;
+  renderAchButton();
   renderResult();
   renderCommitBox();
   show('result');
@@ -522,7 +559,102 @@ function renderResult() {
   $('seed').textContent = seed;
   renderResultChain();
   renderOppCard();
+  renderTitleAndAchievements();
+  if (!$('share-panel').hidden) renderShare();
 }
+
+let matchResult = null; // { stats, title, earned, fresh }
+
+function renderTitleAndAchievements() {
+  const { title, earned, fresh } = matchResult;
+  $('title-name').textContent = t(`title.${title}`);
+  $('title-badge').classList.toggle('lost', matchResult.stats.outcome === 'lose');
+  $('result-ach').innerHTML = earned.length
+    ? earned.map((id) => achItem(id, true, fresh.includes(id))).join('')
+    : `<li class="ach-empty">${t('ach.none')}</li>`;
+}
+
+const achItem = (id, got, isNew) => `<li class="ach-item${got ? ' got' : ''}">
+    <span class="ach-icon" aria-hidden="true">${got ? '★' : '☆'}</span>
+    <span class="ach-text"><span class="ach-name">${t(`ach.${id}`)}${isNew ? ` <span class="ach-new">${t('ach.new')}</span>` : ''}</span><span class="ach-desc">${t(`ach.${id}.desc`)}</span></span>
+  </li>`;
+
+function renderAchButton() {
+  const n = Object.keys(unlockedAchievements()).length;
+  $('btn-ach').textContent = t('ach.btn', { n, total: ACHIEVEMENTS.length });
+}
+
+function renderAchDialog() {
+  const saved = unlockedAchievements();
+  const n = ACHIEVEMENTS.filter(([id]) => id in saved).length;
+  $('ach-progress').textContent = t('ach.progress', { n, total: ACHIEVEMENTS.length });
+  $('ach-all').innerHTML = ACHIEVEMENTS.map(([id]) => achItem(id, id in saved, false)).join('');
+}
+
+// 战报：一张 1200×630 的图片 + 一段可以直接发推的文字
+function shareData() {
+  const { stats, title } = matchResult;
+  const s = stats.chain;
+  const chainLine = s.firstCrackRound ? t('chain.started', { round: s.firstCrackRound, run: s.longestRun }) : t('chain.calm');
+  const mended = s.mended ? ` ${t('chain.mended', { n: s.mended })}` : '';
+  return {
+    appTitle: t('app.title'),
+    caption: t('share.caption'),
+    titleLabel: t('title.label'),
+    title: t(`title.${title}`),
+    myId: selected,
+    oppId: aiCircuit,
+    myBrain: brainLabel(selected),
+    oppBrain: brainLabel(aiCircuit),
+    a: stats.myScore,
+    b: stats.oppScore,
+    outcome: stats.outcome,
+    era: eraText(era.era.id).name,
+    chain: s.states,
+    chainStory: chainLine + mended,
+    chainLine,
+    url: SITE_URL,
+  };
+}
+
+// 发推用的文字，最长情况也要在 X 的 280 字以内（test/achievements.test.js 检查）
+function shareText(d) {
+  return `${t('share.text', { title: d.title, era: d.era, brain: d.myBrain, opp: d.oppBrain, a: d.a, b: d.b, chain: d.chainLine })} https://${SITE_URL}/`;
+}
+
+function renderShare() {
+  const d = shareData();
+  drawShareCard($('share-canvas'), d);
+  $('share-text').textContent = shareText(d);
+  $('btn-share-copy').textContent = t('share.copy');
+}
+
+$('btn-share').addEventListener('click', () => {
+  $('share-panel').hidden = false;
+  renderShare();
+});
+
+$('btn-share-download').addEventListener('click', () => {
+  $('share-canvas').toBlob((blob) => {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chain-of-suspicion-${seed}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }, 'image/png');
+});
+
+$('btn-share-copy').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText($('share-text').textContent);
+    $('btn-share-copy').textContent = t('share.copied');
+  } catch {
+    // 剪贴板不可用时（非安全上下文等）选中文字，方便手动复制
+    getSelection().selectAllChildren($('share-text'));
+  }
+});
 
 function renderResultChain() {
   const s = chainSummary(match.history);
@@ -630,6 +762,17 @@ function setupDialog(dialog) {
 const rules = setupDialog($('rules'));
 $('btn-rules').addEventListener('click', () => rules.showModal());
 const brainDialog = setupDialog($('brain-info'));
+const achDialog = setupDialog($('ach-dialog'));
+$('btn-ach').addEventListener('click', () => {
+  renderAchDialog();
+  achDialog.showModal();
+});
+$('btn-ach-reset').addEventListener('click', () => {
+  if (!confirm(t('ach.resetConfirm'))) return;
+  clearAchievements();
+  renderAchDialog();
+  renderAchButton();
+});
 brainDialog.addEventListener('close', () => {
   openDialog = null;
 });
@@ -650,6 +793,8 @@ onLangChange(() => {
     renderCircuits();
     renderEras();
     renderFooter();
+    renderAchButton();
+    if (achDialog.open) renderAchDialog();
     updateEvaluatorStatus();
     updateWalletStatus();
     renderOpenDialog();
@@ -668,6 +813,7 @@ onLangChange(() => {
 
 applyStatic();
 renderFooter();
+renderAchButton();
 renderEras();
 updateEvaluatorStatus();
 // 没检测到钱包时默认不勾选，玩家仍可以不付费试玩；钱包晚注入时刷新一下状态。
